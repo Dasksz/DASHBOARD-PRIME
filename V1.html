@@ -1,0 +1,1387 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gerador de Relatório Otimizado</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .file-input-label { display: block; text-align: left; font-size: 0.875rem; font-weight: 500; color: #cbd5e1; margin-bottom: 0.5rem; }
+        .progress-bar-container { background-color: #1e293b; border-radius: 0.5rem; overflow: hidden; }
+        .progress-bar { background-color: #14b8a6; height: 100%; transition: width 0.3s ease-in-out; }
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-200 flex items-center justify-center min-h-screen">
+    <div class="text-center p-8 bg-slate-800 rounded-lg shadow-2xl max-w-lg w-full m-4">
+        <h1 class="text-2xl font-bold text-white mb-4">Gerador de Relatório Otimizado</h1>
+        <p class="text-slate-400 mb-6">Carregue os arquivos para gerar um dashboard offline. O processamento agora ocorre em segundo plano, sem travar a interface.</p>
+        
+        <div class="space-y-4 mb-6">
+            <div>
+                <label for="sales-file-input" class="file-input-label">1. Arquivo de Vendas (Mês Atual)</label>
+                <input type="file" id="sales-file-input" class="block w-full text-sm text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-slate-700 file:text-slate-200 hover:file:bg-slate-600" accept=".csv, .xls, .xlsx"/>
+            </div>
+            <div>
+                <label for="clients-file-input" class="file-input-label">2. Cadastro de Clientes</label>
+                <input type="file" id="clients-file-input" class="block w-full text-sm text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-slate-700 file:text-slate-200 hover:file:bg-slate-600" accept=".csv, .xls, .xlsx"/>
+            </div>
+            <div>
+                <label for="products-file-input" class="file-input-label">3. Cadastro de Produtos</label>
+                <input type="file" id="products-file-input" class="block w-full text-sm text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-slate-700 file:text-slate-200 hover:file:bg-slate-600" accept=".csv, .xls, .xlsx"/>
+            </div>
+            <div>
+                <label for="history-file-input" class="file-input-label">4. Histórico de Vendas (Trimestre Anterior)</label>
+                <input type="file" id="history-file-input" class="block w-full text-sm text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-slate-700 file:text-slate-200 hover:file:bg-slate-600" accept=".csv, .xls, .xlsx"/>
+            </div>
+        </div>
+        
+        <button id="generate-btn" class="bg-teal-600 hover:bg-teal-700 text-white font-bold py-2 px-4 rounded-lg w-full disabled:bg-slate-600" disabled>
+            Gerar Relatório
+        </button>
+
+        <!-- Status e Barra de Progresso -->
+        <div id="status-container" class="hidden mt-6 text-sm h-12 flex flex-col justify-center">
+            <p id="status-text" class="mb-2"></p>
+            <div class="progress-bar-container w-full h-2">
+                <div id="progress-bar" class="progress-bar"></div>
+            </div>
+        </div>
+
+        <div id="download-container" class="hidden mt-6 border-t border-slate-700 pt-6">
+            <a id="download-link" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 px-6 rounded-lg w-full inline-block">
+                Baixar Relatório HTML
+            </a>
+        </div>
+    </div>
+
+    <!-- SCRIPT DA PÁGINA PRINCIPAL (UI) -->
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const salesFileInput = document.getElementById('sales-file-input');
+            const clientsFileInput = document.getElementById('clients-file-input');
+            const productsFileInput = document.getElementById('products-file-input');
+            const historyFileInput = document.getElementById('history-file-input');
+            const generateBtn = document.getElementById('generate-btn');
+            
+            const statusContainer = document.getElementById('status-container');
+            const statusText = document.getElementById('status-text');
+            const progressBar = document.getElementById('progress-bar');
+
+            const downloadContainer = document.getElementById('download-container');
+            const downloadLink = document.getElementById('download-link');
+            
+            let files = {};
+
+            const checkFiles = () => {
+                generateBtn.disabled = !(files.salesFile && files.clientsFile && files.productsFile && files.historyFile);
+                downloadContainer.classList.add('hidden');
+            };
+
+            salesFileInput.addEventListener('change', (e) => { files.salesFile = e.target.files[0]; checkFiles(); });
+            clientsFileInput.addEventListener('change', (e) => { files.clientsFile = e.target.files[0]; checkFiles(); });
+            productsFileInput.addEventListener('change', (e) => { files.productsFile = e.target.files[0]; checkFiles(); });
+            historyFileInput.addEventListener('change', (e) => { files.historyFile = e.target.files[0]; checkFiles(); });
+
+            // Since this will be hosted, we can directly reference the external worker file.
+            const worker = new Worker('parser.worker.js');
+
+            // Listener for messages from the Worker
+            worker.onmessage = (event) => {
+                const { type, status, percentage, data, message } = event.data;
+
+                if (type === 'progress') {
+                    statusText.textContent = status;
+                    progressBar.style.width = `${percentage}%`;
+                } else if (type === 'result') {
+                    statusText.textContent = 'O seu relatório está pronto!';
+                    progressBar.style.width = '100%';
+                    generateReportFile(data); // Generate the final HTML file
+                    downloadContainer.classList.remove('hidden');
+                    generateBtn.disabled = false;
+                } else if (type === 'error') {
+                    statusContainer.classList.remove('hidden');
+                    statusText.innerHTML = `<p class="text-red-500">Erro: ${message}</p>`;
+                    progressBar.style.width = '0%';
+                    generateBtn.disabled = false;
+                }
+            };
+
+            generateBtn.addEventListener('click', () => {
+                if (!files.salesFile || !files.clientsFile || !files.productsFile || !files.historyFile) return;
+                
+                generateBtn.disabled = true;
+                statusContainer.classList.remove('hidden');
+                statusText.textContent = 'A iniciar o processamento...';
+                progressBar.style.width = '0%';
+                downloadContainer.classList.add('hidden');
+
+                // Send the files to the Worker to start processing
+                worker.postMessage(files);
+            });
+
+            function generateReportFile(data) {
+                const jsonDataString = JSON.stringify(data);
+                const generationDate = new Date().toLocaleString('pt-BR');
+                
+                // The complete logic for the final dashboard remains the same for now.
+                const scriptLogic = `
+                    const allSalesData = embeddedData.detailed;
+                    const allHistoryData = embeddedData.history;
+                    const aggregatedOrders = embeddedData.byOrder;
+                    const allClientsData = embeddedData.clients;
+                    const clientMapForKPIs = new Map(allClientsData.map(c => [String(c['Código']), c]));
+
+                    aggregatedOrders.sort((a, b) => {
+                        const dateA = parseDate(a.DTPED);
+                        const dateB = parseDate(b.DTPED);
+                        if (!dateA) return 1;
+                        if (!dateB) return -1;
+                        return dateB - dateA;
+                    });
+
+                    Chart.register(ChartDataLabels);
+
+                    const mainDashboard = document.getElementById('main-dashboard');
+                    const cityView = document.getElementById('city-view');
+                    const weeklyView = document.getElementById('weekly-view');
+                    const comparisonView = document.getElementById('comparison-view');
+                    
+                    const showWeeklyBtn = document.getElementById('show-weekly-btn');
+                    const showCityBtn = document.getElementById('show-city-btn');
+                    const backToMainFromCityBtn = document.getElementById('back-to-main-from-city-btn');
+                    const backToMainFromWeeklyBtn = document.getElementById('back-to-main-from-weekly-btn');
+                    const backToMainFromComparisonBtn = document.getElementById('back-to-main-from-comparison-btn');
+
+                    const totalVendasEl = document.getElementById('total-vendas');
+                    const totalPesoEl = document.getElementById('total-peso');
+                    const workingDaysInput = document.getElementById('working-days-input');
+                    const passedWorkingDaysInput = document.getElementById('passed-working-days-input');
+                    const viewChartBtn = document.getElementById('viewChartBtn');
+                    const viewTableBtn = document.getElementById('viewTableBtn');
+                    const viewComparisonBtn = document.getElementById('viewComparisonBtn');
+                    const chartView = document.getElementById('chartView');
+                    const tableView = document.getElementById('tableView');
+                    const faturamentoBtn = document.getElementById('faturamentoBtn');
+                    const pesoBtn = document.getElementById('pesoBtn');
+                    
+                    const supervisorFilter = document.getElementById('supervisor-filter');
+                    const vendedorFilterBtn = document.getElementById('vendedor-filter-btn');
+                    const vendedorFilterText = document.getElementById('vendedor-filter-text');
+                    const vendedorFilterDropdown = document.getElementById('vendedor-filter-dropdown');
+
+                    const posicaoFilter = document.getElementById('posicao-filter');
+                    const codcliFilter = document.getElementById('codcli-filter');
+                    const clearFiltersBtn = document.getElementById('clear-filters-btn');
+                    const salesByPersonTitle = document.getElementById('sales-by-person-title');
+                    const fornecedorToggleContainer = document.getElementById('fornecedor-toggle-container');
+                    
+                    const citySupervisorFilter = document.getElementById('city-supervisor-filter');
+                    const cityVendedorFilterBtn = document.getElementById('city-vendedor-filter-btn');
+                    const cityVendedorFilterText = document.getElementById('city-vendedor-filter-text');
+                    const cityVendedorFilterDropdown = document.getElementById('city-vendedor-filter-dropdown');
+                    const cityNameFilter = document.getElementById('city-name-filter');
+                    const cityCodCliFilter = document.getElementById('city-codcli-filter');
+                    const citySuggestions = document.getElementById('city-suggestions');
+                    const clearCityFiltersBtn = document.getElementById('clear-city-filters-btn');
+                    const totalFaturamentoCidadeEl = document.getElementById('total-faturamento-cidade');
+                    const cityActiveDetailTableBody = document.getElementById('city-active-detail-table-body');
+                    const cityInactiveDetailTableBody = document.getElementById('city-inactive-detail-table-body');
+
+                    const weeklySupervisorFilter = document.getElementById('weekly-supervisor-filter');
+                    const clearWeeklyFiltersBtn = document.getElementById('clear-weekly-filters-btn');
+                    const totalMesSemanalEl = document.getElementById('total-mes-semanal');
+                    const weeklyFornecedorToggleContainer = document.getElementById('weekly-fornecedor-toggle-container');
+                    
+                    const comparisonSupervisorFilter = document.getElementById('comparison-supervisor-filter');
+                    const comparisonVendedorFilterBtn = document.getElementById('comparison-vendedor-filter-btn');
+                    const comparisonVendedorFilterText = document.getElementById('comparison-vendedor-filter-text');
+                    const comparisonVendedorFilterDropdown = document.getElementById('comparison-vendedor-filter-dropdown');
+                    const comparisonFornecedorToggleContainer = document.getElementById('comparison-fornecedor-toggle-container');
+                    
+                    const comparisonSupplierFilterBtn = document.getElementById('comparison-supplier-filter-btn');
+                    const comparisonSupplierFilterText = document.getElementById('comparison-supplier-filter-text');
+                    const comparisonSupplierFilterDropdown = document.getElementById('comparison-supplier-filter-dropdown');
+
+                    const comparisonCityFilter = document.getElementById('comparison-city-filter');
+                    const comparisonCitySuggestions = document.getElementById('comparison-city-suggestions');
+                    const clearComparisonFiltersBtn = document.getElementById('clear-comparison-filters-btn');
+                    const comparisonWorkingDaysInput = document.getElementById('comparison-working-days-input');
+                    const comparisonPassedWorkingDaysInput = document.getElementById('comparison-passed-working-days-input');
+                    const comparisonTendencyToggle = document.getElementById('comparison-tendency-toggle');
+                    
+                    const comparisonChartTitle = document.getElementById('comparison-chart-title');
+                    const toggleWeeklyBtn = document.getElementById('toggle-weekly-btn');
+                    const toggleMonthlyBtn = document.getElementById('toggle-monthly-btn');
+                    const weeklyComparisonChartContainer = document.getElementById('weeklyComparisonChartContainer');
+                    const monthlyComparisonChartContainer = document.getElementById('monthlyComparisonChartContainer');
+
+                    const modal = document.getElementById('order-details-modal');
+                    const modalCloseBtn = document.getElementById('modal-close-btn');
+                    const modalPedidoId = document.getElementById('modal-pedido-id');
+                    const modalHeaderInfo = document.getElementById('modal-header-info');
+                    const modalTableBody = document.getElementById('modal-table-body');
+                    const modalFooterTotal = document.getElementById('modal-footer-total');
+                    
+                    const clientModal = document.getElementById('client-details-modal');
+                    const clientModalCloseBtn = document.getElementById('client-modal-close-btn');
+                    const clientModalContent = document.getElementById('client-modal-content');
+
+                    let charts = {};
+                    let currentProductMetric = 'faturamento';
+                    let currentFornecedor = '';
+                    let currentWeeklyFornecedor = '';
+                    let currentComparisonFornecedor = '';
+                    let useTendencyComparison = false;
+                    let comparisonChartType = 'weekly';
+                    let activeClientsForExport = [];
+                    let inactiveClientsForExport = [];
+                    let selectedSellers = [];
+                    let selectedCitySellers = [];
+                    let selectedComparisonSellers = [];
+                    let selectedComparisonSuppliers = [];
+                    let historicalBests = {};
+                    
+                    const getFirstName = (fullName) => (fullName || '').split(' ')[0];
+
+                    function parseDate(dateString) {
+                        if (!dateString) return null;
+                        if (dateString instanceof Date) return !isNaN(dateString.getTime()) ? dateString : null;
+                        if (typeof dateString === 'number') return new Date(Math.round((dateString - 25569) * 86400 * 1000));
+                        if (typeof dateString !== 'string') return null;
+                        const parts = dateString.split('/');
+                        if (parts.length === 3) {
+                            const [day, month, year] = parts;
+                            if (day.length === 2 && month.length === 2 && year.length === 4) return new Date(\`\${year}-\${month}-\${day}T00:00:00\`);
+                        }
+                        const isoDate = new Date(dateString);
+                        return !isNaN(isoDate.getTime()) ? isoDate : null;
+                    }
+
+                    function formatDate(date) {
+                        if (!date) return '';
+                        const d = parseDate(date);
+                        if (!d || isNaN(d.getTime())) return '';
+                        const userTimezoneOffset = d.getTimezoneOffset() * 60000;
+                        return new Date(d.getTime() + userTimezoneOffset).toLocaleDateString('pt-BR');
+                    }
+                    
+                    function getUniqueMonthCount(data) {
+                        const months = new Set();
+                        data.forEach(sale => {
+                            const saleDate = parseDate(sale.DTPED);
+                            if (saleDate) {
+                                const monthKey = \`\${saleDate.getFullYear()}-\${saleDate.getMonth()}\`;
+                                months.add(monthKey);
+                            }
+                        });
+                        return months.size > 0 ? months.size : 1;
+                    }
+
+                    function calculateSummaryFromData(data, isFiltered) {
+                        const summary = { 
+                            totalFaturamento: 0, totalPeso: 0, vendasPorVendedor: {}, vendasPorSupervisor: {}, 
+                            top10ProdutosFaturamento: [], top10ProdutosPeso: [], faturamentoPorFornecedor: {} 
+                        };
+                        const salesByProduct = {};
+                        const faturamentoMap = new Map();
+
+                        data.forEach(item => {
+                            summary.totalFaturamento += item.VLVENDA;
+                            summary.totalPeso += item.TOTPESOLIQ;
+
+                            const vendedor = item.NOME || 'N/A';
+                            summary.vendasPorVendedor[vendedor] = (summary.vendasPorVendedor[vendedor] || 0) + item.VLVENDA;
+
+                            const supervisor = item.SUPERV || 'N/A';
+                            summary.vendasPorSupervisor[supervisor] = (summary.vendasPorSupervisor[supervisor] || 0) + item.VLVENDA;
+
+                            const produto = item.DESCRICAO || 'N/A';
+                            const codigo = item.PRODUTO || 'N/A';
+                            if (!salesByProduct[produto]) salesByProduct[produto] = { faturamento: 0, peso: 0, codigo: codigo };
+                            salesByProduct[produto].faturamento += item.VLVENDA;
+                            salesByProduct[produto].peso += item.TOTPESOLIQ;
+
+                            let fornecedorLabel;
+                            if(isFiltered){
+                                const fornecedorNome = item.FORNECEDOR || 'N/A';
+                                const codFor = item.CODFOR;
+                                fornecedorLabel = \`\${fornecedorNome} - \${codFor}\`;
+                            } else {
+                                 fornecedorLabel = item.OBSERVACAOFOR || 'N/A';
+                            }
+                            
+                            const currentTotal = faturamentoMap.get(fornecedorLabel) || 0;
+                            faturamentoMap.set(fornecedorLabel, currentTotal + item.VLVENDA);
+                        });
+
+                        summary.faturamentoPorFornecedor = Object.fromEntries(faturamentoMap);
+                        summary.top10ProdutosFaturamento = Object.entries(salesByProduct).sort(([,a],[,b]) => b.faturamento - a.faturamento).slice(0, 10).map(([p, d]) => ({ produto: p, ...d }));
+                        summary.top10ProdutosPeso = Object.entries(salesByProduct).sort(([,a],[,b]) => b.peso - a.peso).slice(0, 10).map(([p, d]) => ({ produto: p, ...d }));
+                        return summary;
+                    }
+
+                    const isObject = obj => obj && typeof obj === 'object' && !Array.isArray(obj);
+                    const mergeDeep = (...objects) => {
+                        return objects.reduce((prev, obj) => {
+                            Object.keys(obj).forEach(key => {
+                                const pVal = prev[key];
+                                const oVal = obj[key];
+                                if (isObject(pVal) && isObject(oVal)) prev[key] = mergeDeep(pVal, oVal);
+                                else prev[key] = oVal;
+                            });
+                            return prev;
+                        }, {});
+                    };
+
+                    function createChart(canvasId, type, labels, chartData, optionsOverrides = {}) {
+                        const container = document.getElementById(canvasId + 'Container');
+                        if (!container) return;
+                        if (charts[canvasId]) charts[canvasId].destroy();
+                        
+                        container.innerHTML = '';
+                        const newCanvas = document.createElement('canvas');
+                        newCanvas.id = canvasId;
+                        container.appendChild(newCanvas);
+                        container.style.display = ''; container.style.alignItems = ''; container.style.justifyContent = '';
+                        const ctx = newCanvas.getContext('2d');
+                        const professionalPalette = ['#14b8a6', '#6366f1', '#ec4899', '#f97316', '#8b5cf6', '#06b6d4', '#f59e0b', '#ef4444', '#22c55e'];
+
+                        let finalDatasets;
+                        if (Array.isArray(chartData) && chartData.length > 0 && typeof chartData[0] === 'object' && chartData[0].hasOwnProperty('label')) {
+                            finalDatasets = chartData.map((dataset, index) => ({ ...dataset, backgroundColor: dataset.backgroundColor || professionalPalette[index % professionalPalette.length], borderColor: dataset.borderColor || professionalPalette[index % professionalPalette.length] }));
+                        } else {
+                             finalDatasets = [{ data: chartData, backgroundColor: canvasId === 'customerStatusChart' ? ['#2dd4bf', '#f59e0b'] : professionalPalette }];
+                        }
+                        
+                        let baseOptions = { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false, labels: {color: '#cbd5e1'} }, datalabels: { display: false } }, scales: { y: { beginAtZero: true, ticks: { color: '#94a3b8' }, grid: { color: 'rgba(255, 255, 255, 0.05)'} }, x: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(255, 255, 255, 0.05)'} } } };
+                        let typeDefaults = {};
+                        if (type === 'bar') typeDefaults = { layout: { padding: { right: 30 } }, plugins: { datalabels: { display: true, anchor: 'end', align: 'end', offset: -4, color: '#cbd5e1', font: { size: 10 }, formatter: (v) => (v > 1000 ? (v/1000).toFixed(1) + 'k' : v.toFixed(0)) } } };
+                        if (type === 'doughnut') typeDefaults = { maintainAspectRatio: true, scales: { y: { display: false }, x: { display: false } }, plugins: { legend: { position: 'top', labels: { color: '#cbd5e1' } }, datalabels: { display: true, color: '#fff', font: { size: 11, weight: 'bold' }, formatter: (v, ctx) => { const total = ctx.chart.data.datasets[0].data.reduce((a, b) => a + b, 0); if(total === 0 || v === 0) return ''; const p = (v / total) * 100; return p > 5 ? p.toFixed(0) + '%' : ''; } } } };
+                        const options = mergeDeep(baseOptions, typeDefaults, optionsOverrides);
+                        charts[canvasId] = new Chart(ctx, { type, data: { labels, datasets: finalDatasets }, options });
+                    }
+
+                    function showNoDataMessage(canvasId, message) {
+                        if (charts[canvasId]) charts[canvasId].destroy();
+                        const container = document.getElementById(canvasId + 'Container');
+                        if(container) {
+                            container.style.display = 'flex'; container.style.alignItems = 'center'; container.style.justifyContent = 'center';
+                            container.innerHTML = \`<p class="text-slate-500">\${message}</p>\`;
+                        }
+                    }
+
+                    function updateProductBarChart(summary) {
+                        const metric = currentProductMetric;
+                        const data = metric === 'faturamento' ? summary.top10ProdutosFaturamento : summary.top10ProdutosPeso;
+                        const labels = data.map(p => \`(\${p.codigo}) \${p.produto}\`);
+                        const values = data.map(p => p[metric]);
+                        createChart('salesByProductBarChart', 'bar', labels, values);
+                    }
+
+                    function renderTable(data) {
+                        const tableBody = document.getElementById('report-table-body');
+                        if (!tableBody) return;
+                        const getPosicaoBadge = (posicao) => {
+                            if (!posicao) return '<span>-</span>';
+                            let classes = '';
+                            switch (posicao) {
+                                case 'L': classes = 'bg-green-500/20 text-green-300'; break;
+                                case 'M': classes = 'bg-blue-500/20 text-blue-300'; break;
+                                case 'F': classes = 'bg-yellow-500/20 text-yellow-300'; break;
+                                default: return \`<span>\${posicao}</span>\`;
+                            }
+                            return \`<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium \${classes}">\${posicao}</span>\`;
+                        };
+                        tableBody.innerHTML = data.map(row => \`
+                            <tr class="hover:bg-slate-700">
+                                <td class="px-4 py-2"><a href="#" class="text-teal-400 hover:underline" data-pedido-id="\${row.PEDIDO}">\${row.PEDIDO}</a></td>
+                                <td class="px-4 py-2"><a href="#" class="text-teal-400 hover:underline" data-codcli="\${row.CODCLI}">\${row.CODCLI}</a></td>
+                                <td class="px-4 py-2">\${getFirstName(row.NOME)}</td>
+                                <td class="px-4 py-2">\${row.FORNECEDORES_STR || ''}</td>
+                                <td class="px-4 py-2">\${formatDate(row.DTPED)}</td>
+                                <td class="px-4 py-2">\${formatDate(row.DTSAIDA)}</td>
+                                <td class="px-4 py-2 text-right">\${(row.TOTPESOLIQ || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })} Kg</td>
+                                <td class="px-4 py-2 text-right">\${(row.VLVENDA || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
+                                <td class="px-4 py-2 text-center">\${getPosicaoBadge(row.POSICAO)}</td>
+                            </tr>
+                        \`).join('');
+                    }
+
+                    function getWorkingDays(year, month) {
+                        let count = 0; const date = new Date(year, month, 1);
+                        while (date.getMonth() === month) {
+                            const day = date.getDay();
+                            if (day >= 1 && day <= 5) count++;
+                            date.setDate(date.getDate() + 1);
+                        }
+                        return count;
+                    }
+
+                    function getPassedWorkingDays(year, month, today) {
+                        let count = 0; const date = new Date(year, month, 1);
+                        while (date <= today && date.getMonth() === month) {
+                            const day = date.getDay();
+                            if (day >= 1 && day <= 5) count++;
+                            date.setDate(date.getDate() + 1);
+                        }
+                        return count;
+                    }
+
+                    function updateTrendChart(currentSales, historicalSales) {
+                        const totalWorkingDays = parseInt(workingDaysInput.value, 10);
+                        const passedWorkingDays = parseInt(passedWorkingDaysInput.value, 10);
+                        const monthCount = getUniqueMonthCount(historicalSales);
+                        const pastQuarterRevenue = historicalSales.reduce((sum, sale) => sum + sale.VLVENDA, 0);
+                        const averageMonthlyRevenue = pastQuarterRevenue / monthCount;
+                        const currentMonthRevenue = currentSales.reduce((sum, sale) => sum + sale.VLVENDA, 0);
+                        const trend = passedWorkingDays > 0 && totalWorkingDays > 0 ? (currentMonthRevenue / passedWorkingDays) * totalWorkingDays : 0;
+                        const lineChartDataset = [{ label: 'Valor', data: [averageMonthlyRevenue, trend], fill: true, borderColor: '#14b8a6', backgroundColor: 'rgba(20, 184, 166, 0.1)', tension: 0.2, pointRadius: 6, pointBackgroundColor: '#14b8a6', pointBorderColor: '#FFF', pointBorderWidth: 2, pointHoverRadius: 8 }];
+                        const formatLabelValue = (v) => (v >= 1000000 ? 'R$ ' + (v / 1000000).toFixed(2) + ' M' : 'R$ ' + (v / 1000).toFixed(0) + 'k');
+                        createChart('trendChart', 'line', ['Média Faturamento Trimestre', 'Tendência Mês Atual'], lineChartDataset, { plugins: { legend: { display: false }, datalabels: { display: true, anchor: 'end', align: 'top', offset: 8, color: '#cbd5e1', font: { size: 12, weight: 'bold' }, formatter: formatLabelValue } }, scales: { y: { ticks: { callback: function(value) { if (value >= 1000000) return 'R$ ' + (value / 1000000).toFixed(1) + 'M'; return 'R$ ' + (value / 1000) + 'k'; } } }, x: { grid: { display: false } } } });
+                    }
+
+                    function updateAllVisuals() {
+                        const supervisor = supervisorFilter.value;
+                        const posicao = posicaoFilter.value;
+                        const codcli = codcliFilter.value.trim();
+                        if (codcli && !allClientsData.some(c => String(c['Código']) === codcli)) return;
+
+                        let filteredSalesData = allSalesData;
+                        let filteredHistoryData = allHistoryData;
+                        if (currentFornecedor) {
+                             filteredSalesData = filteredSalesData.filter(row => String(row.OBSERVACAOFOR).trim() === currentFornecedor);
+                             filteredHistoryData = filteredHistoryData.filter(row => String(row.OBSERVACAOFOR).trim() === currentFornecedor);
+                        }
+                        if (codcli) {
+                            filteredSalesData = filteredSalesData.filter(row => row.CODCLI === codcli);
+                            filteredHistoryData = filteredHistoryData.filter(row => row.CODCLI === codcli);
+                        } else {
+                            if (supervisor) {
+                                filteredSalesData = filteredSalesData.filter(row => row.SUPERV === supervisor);
+                                filteredHistoryData = filteredHistoryData.filter(row => row.SUPERV === supervisor);
+                            }
+                            if (selectedSellers.length > 0) {
+                                filteredSalesData = filteredSalesData.filter(row => selectedSellers.includes(row.NOME));
+                                filteredHistoryData = filteredHistoryData.filter(row => selectedSellers.includes(row.NOME));
+                            }
+                        }
+                        if (posicao) filteredSalesData = filteredSalesData.filter(row => row.POSICAO === posicao);
+                        
+                        const filteredTableData = aggregatedOrders.filter(order => {
+                            let matches = true;
+                            if (codcli) matches = matches && order.CODCLI === codcli;
+                            else {
+                                if (supervisor) matches = matches && order.SUPERV === supervisor;
+                                if (selectedSellers.length > 0) matches = matches && selectedSellers.includes(order.NOME);
+                            }
+                            if (currentFornecedor) matches = matches && order.FORNECEDORES_LIST.includes(currentFornecedor);
+                            if (posicao) matches = matches && order.POSICAO === posicao;
+                            return matches;
+                        });
+                        
+                        const isFiltered = !!supervisor || selectedSellers.length > 0 || !!codcli || !!currentFornecedor;
+                        const summary = calculateSummaryFromData(filteredSalesData, isFiltered);
+                        totalVendasEl.textContent = summary.totalFaturamento.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+                        totalPesoEl.textContent = \`\${(summary.totalPeso / 1000).toLocaleString('pt-BR', { minimumFractionDigits: 3, maximumFractionDigits: 3 })} Ton\`;
+                        
+                        if (!tableView.classList.contains('hidden')) renderTable(filteredTableData);
+                        
+                        if (!chartView.classList.contains('hidden')) {
+                            updateTrendChart(filteredSalesData, filteredHistoryData);
+                            const totalForPercentage = supervisor ? Object.values(summary.vendasPorVendedor).reduce((a, b) => a + b, 0) : Object.values(summary.vendasPorSupervisor).reduce((a, b) => a + b, 0);
+                            const personChartTooltipOptions = { plugins: { tooltip: { callbacks: { label: function(context) { let label = context.dataset.label || ''; if (label) label += ': '; const value = context.parsed.y; if (value !== null) { label += new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value); if (totalForPercentage > 0) { const percentage = ((value / totalForPercentage) * 100).toFixed(2); label += \` (\${percentage}%)\`; } } return label; } } } } };
+                            if (supervisor) {
+                                salesByPersonTitle.textContent = 'Vendas por Vendedor';
+                                createChart('salesByPersonChart', 'bar', Object.keys(summary.vendasPorVendedor).map(getFirstName), Object.values(summary.vendasPorVendedor), personChartTooltipOptions);
+                            } else {
+                                salesByPersonTitle.textContent = 'Vendas por Supervisor';
+                                createChart('salesByPersonChart', 'bar', Object.keys(summary.vendasPorSupervisor), Object.values(summary.vendasPorSupervisor), personChartTooltipOptions);
+                            }
+                            
+                            document.getElementById('faturamentoPorFornecedorTitle').textContent = isFiltered ? 'Faturamento por Fornecedor' : 'Faturamento por Categoria';
+                            const faturamentoPorFornecedorData = summary.faturamentoPorFornecedor;
+                            const totalFaturamentoFornecedor = Object.values(faturamentoPorFornecedorData).reduce((a, b) => a + b, 0);
+                            const fornecedorTooltipOptions = { indexAxis: 'y', plugins: { tooltip: { callbacks: { label: function(context) { let label = context.label || ''; if (label) label += ': '; const value = context.parsed.x; if (value !== null) { label += new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value); if (totalFaturamentoFornecedor > 0) { const percentage = ((value / totalFaturamentoFornecedor) * 100).toFixed(2); label += \` (\${percentage}%)\`; } } return label; } } } } };
+                            const sortedFornecedores = Object.entries(faturamentoPorFornecedorData).sort(([, a], [, b]) => a - b); 
+                            if (sortedFornecedores.length > 0) createChart('faturamentoPorFornecedorChart', 'bar', sortedFornecedores.map(([name]) => name), sortedFornecedores.map(([, total]) => total), fornecedorTooltipOptions);
+                            else showNoDataMessage('faturamentoPorFornecedorChart', 'Sem dados de faturamento.');
+                            updateProductBarChart(summary);
+                        }
+                    }
+                    
+                    function populateSupervisors(filterElementId, dataSource) {
+                        const supervisorFilterEl = document.getElementById(filterElementId);
+                        const supervisors = [...new Set(dataSource.map(item => item.SUPERV).filter(Boolean))].sort();
+                        const currentSupervisorValue = supervisorFilterEl.value;
+                        supervisorFilterEl.innerHTML = '<option value="">Todos</option>';
+                        supervisors.forEach(sup => { supervisorFilterEl.innerHTML += \`<option value="\${sup}">\${sup}</option>\`; });
+                        if (supervisors.includes(currentSupervisorValue)) supervisorFilterEl.value = currentSupervisorValue;
+                        else supervisorFilterEl.value = '';
+                    }
+
+                    function updateSellerFilter(supervisor, dropdown, filterText, selectedArray, dataSource) {
+                        const sellersToShow = supervisor ? [...new Set(dataSource.filter(s => s.SUPERV === supervisor).map(s => s.NOME))].sort() : [...new Set(dataSource.map(item => item.NOME).filter(Boolean))].sort();
+                        selectedArray = selectedArray.filter(seller => sellersToShow.includes(seller));
+                        dropdown.innerHTML = '';
+                        sellersToShow.forEach(s => { const isChecked = selectedArray.includes(s); dropdown.innerHTML += \`<label class="flex items-center p-2 hover:bg-slate-600 cursor-pointer"><input type="checkbox" class="form-checkbox h-4 w-4 bg-slate-800 border-slate-500 rounded text-teal-500 focus:ring-teal-500" value="\${s}" \${isChecked ? 'checked' : ''}><span class="ml-2">\${s}</span></label>\`; });
+                        if (selectedArray.length === 0 || selectedArray.length === sellersToShow.length) filterText.textContent = 'Todos Vendedores';
+                        else if (selectedArray.length === 1) filterText.textContent = selectedArray[0];
+                        else filterText.textContent = \`\${selectedArray.length} vendedores selecionados\`;
+                        return selectedArray;
+                    }
+
+                    function resetMainFilters() {
+                        supervisorFilter.value = ''; posicaoFilter.value = ''; codcliFilter.value = ''; currentFornecedor = ''; selectedSellers = [];
+                        document.querySelectorAll('#fornecedor-toggle-container .fornecedor-btn').forEach(b => b.classList.remove('active'));
+                        populateSupervisors('supervisor-filter', allSalesData);
+                        selectedSellers = updateSellerFilter('', vendedorFilterDropdown, vendedorFilterText, selectedSellers, allSalesData);
+                        updateAllVisuals();
+                    }
+                    
+                    function resetCityFilters() {
+                        citySupervisorFilter.value = ''; cityNameFilter.value = ''; cityCodCliFilter.value = ''; selectedCitySellers = [];
+                        selectedCitySellers = updateSellerFilter('', cityVendedorFilterDropdown, cityVendedorFilterText, selectedCitySellers, allSalesData);
+                        updateCityView();
+                    }
+
+                    function resetWeeklyFilters() {
+                        weeklySupervisorFilter.querySelectorAll('input:checked').forEach(cb => cb.checked = false);
+                        currentWeeklyFornecedor = '';
+                        document.querySelectorAll('#weekly-fornecedor-toggle-container .fornecedor-btn').forEach(b => b.classList.remove('active'));
+                        updateWeeklyView();
+                    }
+                    
+                    function resetComparisonFilters() {
+                        comparisonSupervisorFilter.value = ''; currentComparisonFornecedor = ''; comparisonCityFilter.value = ''; 
+                        selectedComparisonSellers = [];
+                        selectedComparisonSuppliers = [];
+                        
+                        document.querySelectorAll('#comparison-fornecedor-toggle-container .fornecedor-btn').forEach(b => b.classList.remove('active'));
+
+                        populateSupervisors('comparison-supervisor-filter', allSalesData);
+                        selectedComparisonSellers = updateSellerFilter('', comparisonVendedorFilterDropdown, comparisonVendedorFilterText, selectedComparisonSellers, allSalesData);
+                        updateSupplierFilter(comparisonSupplierFilterDropdown, comparisonSupplierFilterText, selectedComparisonSuppliers, allSalesData);
+                        updateComparisonView();
+                    }
+
+                    function getRelevantClientsForCityFilter() {
+                        let clients = allClientsData;
+                        const supervisor = citySupervisorFilter.value;
+                        if (supervisor) {
+                            const rcasOfSupervisor = [...new Set(allSalesData.filter(s => s.SUPERV === supervisor).map(s => s.CODUSUR))];
+                            clients = clients.filter(c => c.rcas.some(rca => rcasOfSupervisor.includes(rca)));
+                        }
+                        if (selectedCitySellers.length > 0) {
+                            const rcasOfVendedor = [...new Set(allSalesData.filter(s => selectedCitySellers.includes(s.NOME)).map(s => s.CODUSUR))];
+                            clients = clients.filter(c => c.rcas.some(rca => rcasOfVendedor.includes(rca)));
+                        }
+                        return clients;
+                    }
+                    
+                    function updateCitySuggestions(filterInput, suggestionsContainer, clientDataSource) {
+                        const inputValue = filterInput.value.toLowerCase();
+                        const allAvailableCities = [...new Set(clientDataSource.map(c => c.cidade).filter(c => c && c !== 'N/A'))].sort();
+                        const filteredCities = inputValue ? allAvailableCities.filter(c => c.toLowerCase().includes(inputValue)) : allAvailableCities;
+                        if (filteredCities.length > 0 && (document.activeElement === filterInput || !suggestionsContainer.classList.contains('manual-hide'))) {
+                            suggestionsContainer.innerHTML = filteredCities.map(c => \`<div class="p-2 hover:bg-slate-600 cursor-pointer">\${c}</div>\`).join('');
+                            suggestionsContainer.classList.remove('hidden');
+                        } else suggestionsContainer.classList.add('hidden');
+                    }
+
+                    function validateCityFilter() {
+                        const selectedCity = cityNameFilter.value;
+                        if (!selectedCity) return; 
+                        const relevantClients = getRelevantClientsForCityFilter();
+                        const availableCities = [...new Set(relevantClients.map(c => c.cidade).filter(Boolean))];
+                        if (!availableCities.includes(selectedCity)) cityNameFilter.value = ''; 
+                    }
+
+                    function updateCityView() {
+                        const supervisor = citySupervisorFilter.value;
+                        const codcliFilterVal = cityCodCliFilter.value.trim();
+                        if (codcliFilterVal && !allClientsData.some(c => String(c['Código']) === codcliFilterVal)) return;
+                        let clientsForAnalysis = getRelevantClientsForCityFilter();
+                        const allAvailableCities = [...new Set(clientsForAnalysis.map(c => c.cidade).filter(Boolean))];
+                        const cidadeFiltroInput = cityNameFilter.value.trim();
+                        let cidadeFiltro = '';
+                        if (cidadeFiltroInput && allAvailableCities.includes(cidadeFiltroInput)) cidadeFiltro = cidadeFiltroInput;
+                        const allDates = allSalesData.map(s => parseDate(s.DTPED)).concat(allClientsData.map(c => parseDate(c.ultimaCompra))).filter(d => d && !isNaN(d));
+                        const referenceDate = allDates.length > 0 ? new Date(Math.max.apply(null, allDates)) : new Date();
+                        const currentMonth = referenceDate.getMonth();
+                        const currentYear = referenceDate.getFullYear();
+                        let salesForAnalysis = allSalesData;
+                        if (supervisor) salesForAnalysis = salesForAnalysis.filter(s => s.SUPERV === supervisor);
+                        if (selectedCitySellers.length > 0) salesForAnalysis = salesForAnalysis.filter(s => selectedCitySellers.includes(s.NOME));
+                        if (cidadeFiltro) { clientsForAnalysis = clientsForAnalysis.filter(c => c.cidade && c.cidade === cidadeFiltro); salesForAnalysis = salesForAnalysis.filter(s => s.CIDADE && s.CIDADE === cidadeFiltro); }
+                        if (codcliFilterVal) { clientsForAnalysis = clientsForAnalysis.filter(c => String(c['Código']) === codcliFilterVal); salesForAnalysis = salesForAnalysis.filter(s => s.CODCLI === codcliFilterVal); }
+                        const salesThisMonth = allSalesData.filter(sale => { const saleDate = parseDate(sale.DTPED); return saleDate && saleDate.getFullYear() === currentYear && saleDate.getMonth() === currentMonth; });
+                        const activeClientCodesThisMonth = new Set(salesThisMonth.map(sale => sale.CODCLI));
+                        let activeClientsList = []; let inactiveClientsList = [];
+                        clientsForAnalysis.forEach(client => {
+                            const codcli = String(client['Código']);
+                            if (codcli === '6720' || client.bloqueio === 'S') return;
+                            const registrationDate = parseDate(client.dataCadastro);
+                            client.isNew = registrationDate && registrationDate.getMonth() === currentMonth && registrationDate.getFullYear() === currentYear;
+                            if (activeClientCodesThisMonth.has(codcli)) activeClientsList.push(client);
+                            else {
+                                const clientRcas = client.rcas || [];
+                                if (clientRcas.length > 0 && clientRcas.every(rca => rca === '53')) return;
+                                client.isNewForInactiveLabel = client.isNew && !parseDate(client.ultimaCompra);
+                                inactiveClientsList.push(client);
+                            }
+                        });
+                        inactiveClientsForExport = inactiveClientsList;
+                        if (clientsForAnalysis.length > 0) {
+                             const statusChartOptions = { animation: { duration: 800, easing: 'easeOutQuart' }, plugins: { legend: { position: 'bottom', labels: { color: '#cbd5e1' } }, tooltip: { callbacks: { label: function(context) { return context.label; } } }, datalabels: { formatter: (value, ctx) => { const total = ctx.chart.data.datasets[0].data.reduce((a, b) => a + b, 0); if (total === 0 || value === 0) return ''; const percentage = (value * 100 / total).toFixed(1) + "%"; return \`\${value}\\n(\${percentage})\`; }, color: '#fff', font: { weight: 'bold' }, textAlign: 'center' } } };
+                            createChart('customerStatusChart', 'doughnut', ['Ativos no Mês', 'S/ Vendas no Mês'], [activeClientsList.length, inactiveClientsList.length], statusChartOptions);
+                        } else showNoDataMessage('customerStatusChart', 'Sem clientes no filtro para exibir o status.');
+                        const salesByActiveClient = {};
+                        activeClientsList.forEach(client => {
+                            const codcli = String(client['Código']);
+                            const clientSales = salesThisMonth.filter(s => s.CODCLI === codcli);
+                            const totalFaturamento = clientSales.reduce((sum, sale) => sum + sale.VLVENDA, 0);
+                            const pepsicoTotal = clientSales.filter(s => s.OBSERVACAOFOR === 'PEPSICO').reduce((sum, s) => sum + s.VLVENDA, 0);
+                            const multimarcasTotal = clientSales.filter(s => s.OBSERVACAOFOR === 'MULTIMARCAS').reduce((sum, s) => sum + s.VLVENDA, 0);
+                            salesByActiveClient[codcli] = { ...client, total: totalFaturamento, pepsico: pepsicoTotal, multimarcas: multimarcasTotal };
+                        });
+                        const sortedActiveClients = Object.values(salesByActiveClient).sort((a, b) => b.total - a.total);
+                        activeClientsForExport = sortedActiveClients;
+                        cityActiveDetailTableBody.innerHTML = sortedActiveClients.map(data => { const novoLabel = data.isNew ? \`<span class="ml-2 text-xs font-semibold text-purple-400 bg-purple-900/50 px-2 py-0.5 rounded-full">NOVO</span>\` : ''; let tooltipParts = []; if (data.pepsico > 0) tooltipParts.push(\`PEPSICO: \${data.pepsico.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}\`); if (data.multimarcas > 0) tooltipParts.push(\`MULTIMARCAS: \${data.multimarcas.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}\`); const tooltipText = tooltipParts.join('<br>'); return \`<tr class="hover:bg-slate-700"><td class="px-4 py-2"><a href="#" class="text-teal-400 hover:underline" data-codcli="\${data['Código']}">\${data['Código']}</a></td><td class="px-4 py-2 flex items-center">\${data.fantasia || data.razaoSocial}\${novoLabel}</td><td class="px-4 py-2 text-right"><div class="tooltip">\${data.total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}<span class="tooltip-text" style="width: max-content; transform: translateX(-50%); margin-left: 0;">\${tooltipText}</span></div></td><td class="px-4 py-2">\${data.cidade}</td><td class="px-4 py-2">\${data.bairro}</td><td class="px-4 py-2">\${data.rcas[0] || '-'}</td><td class="px-4 py-2">\${data.rcas[1] || '-'}</td></tr>\` }).join('');
+                        inactiveClientsList.sort((a, b) => { if (a.isNewForInactiveLabel && !b.isNewForInactiveLabel) return -1; if (!a.isNewForInactiveLabel && b.isNewForInactiveLabel) return 1; return (parseDate(b.ultimaCompra) || 0) - (parseDate(a.ultimaCompra) || 0); });
+                        cityInactiveDetailTableBody.innerHTML = inactiveClientsList.map(client => { const novoLabel = client.isNewForInactiveLabel ? \`<span class="ml-2 text-xs font-semibold text-purple-400 bg-purple-900/50 px-2 py-0.5 rounded-full">NOVO</span>\` : ''; return \`<tr class="hover:bg-slate-700"><td class="px-4 py-2"><a href="#" class="text-teal-400 hover:underline" data-codcli="\${client['Código']}">\${client['Código']}</a></td><td class="px-4 py-2 flex items-center">\${client.fantasia || client.razaoSocial}\${novoLabel}</td><td class="px-4 py-2">\${client.cidade}</td><td class="px-4 py-2">\${client.bairro}</td><td class="px-4 py-2 text-center">\${formatDate(client.ultimaCompra)}</td><td class="px-4 py-2">\${client.rcas[0] || '-'}</td><td class="px-4 py-2">\${client.rcas[1] || '-'}</td></tr>\`; }).join('');
+                        const cityChartTitleEl = document.getElementById('city-chart-title');
+                        const cityChartOptions = { indexAxis: 'y', scales: { x: { grace: '15%' } }, plugins: { datalabels: { align: 'end', anchor: 'end', color: '#cbd5e1', font: { size: 14, weight: 'bold' }, formatter: (value) => (value / 1000).toFixed(1) + 'k', offset: 8 } } };
+                        const totalFaturamentoCidade = salesForAnalysis.reduce((sum, item) => sum + item.VLVENDA, 0);
+                        totalFaturamentoCidadeEl.textContent = totalFaturamentoCidade.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+                        if (cidadeFiltro) {
+                            cityChartTitleEl.textContent = 'Top 10 Bairros';
+                            const salesByBairro = {};
+                            salesForAnalysis.forEach(sale => { const bairro = sale.BAIRRO || 'N/A'; salesByBairro[bairro] = (salesByBairro[bairro] || 0) + sale.VLVENDA; });
+                            const sortedBairros = Object.entries(salesByBairro).sort(([, a], [, b]) => b - a).slice(0, 10);
+                            createChart('salesByClientInCityChart', 'bar', sortedBairros.map(([name]) => name), sortedBairros.map(([, total]) => total), cityChartOptions);
+                        } else {
+                            cityChartTitleEl.textContent = 'Top 10 Cidades';
+                            const salesByCity = {};
+                            salesForAnalysis.forEach(sale => { const cidade = sale.CIDADE || 'N/A'; salesByCity[cidade] = (salesByCity[cidade] || 0) + sale.VLVENDA; });
+                            const sortedCidades = Object.entries(salesByCity).sort(([, a], [, b]) => b - a).slice(0, 10);
+                            createChart('salesByClientInCityChart', 'bar', sortedCidades.map(([name]) => name), sortedCidades.map(([, total]) => total), cityChartOptions);
+                        }
+                    }
+                    
+                    function getWeekOfMonth(date) { 
+                        const d = new Date(date);
+                        const startOfMonth = new Date(d.getFullYear(), d.getMonth(), 1);
+                        const dayOfMonth = d.getDate();
+                        const dayOfWeek = startOfMonth.getDay();
+                        const adjustedDayOfWeek = (dayOfWeek === 0) ? 6 : dayOfWeek - 1;
+                        return Math.ceil((dayOfMonth + adjustedDayOfWeek) / 7);
+                    }
+
+                    function calculateHistoricalBests() {
+                        const salesBySupervisorByDay = {};
+                        const mostRecentSaleDate = allSalesData.map(s => parseDate(s.DTPED)).filter(Boolean).reduce((a, b) => a > b ? a : b, new Date(0));
+                        const previousMonthDate = new Date(mostRecentSaleDate.getFullYear(), mostRecentSaleDate.getMonth() - 1, 1);
+                        const previousMonth = previousMonthDate.getMonth();
+                        const previousMonthYear = previousMonthDate.getFullYear();
+                        const historyLastMonthData = allHistoryData.filter(sale => { const saleDate = parseDate(sale.DTPED); return saleDate && saleDate.getMonth() === previousMonth && saleDate.getFullYear() === previousMonthYear; });
+                        historyLastMonthData.forEach(sale => {
+                            if (!sale.SUPERV || sale.SUPERV === 'BALCAO' || !sale.DTPED) return;
+                            const saleDate = parseDate(sale.DTPED); if (!saleDate) return;
+                            const supervisor = sale.SUPERV.toUpperCase(); const dateString = saleDate.toISOString().split('T')[0];
+                            if (!salesBySupervisorByDay[supervisor]) salesBySupervisorByDay[supervisor] = {};
+                            if (!salesBySupervisorByDay[supervisor][dateString]) salesBySupervisorByDay[supervisor][dateString] = 0;
+                            salesBySupervisorByDay[supervisor][dateString] += sale.VLVENDA;
+                        });
+                        const bestDayByWeekdayBySupervisor = {};
+                        for (const supervisor in salesBySupervisorByDay) {
+                            const salesByDay = salesBySupervisorByDay[supervisor];
+                            const bests = {};
+                            for (const dateString in salesByDay) {
+                                const date = new Date(dateString + 'T00:00:00');
+                                const dayOfWeek = date.getDay();
+                                const total = salesByDay[dateString];
+                                if (dayOfWeek >= 1 && dayOfWeek <= 5) { if (!bests[dayOfWeek] || total > bests[dayOfWeek]) bests[dayOfWeek] = total; }
+                            }
+                            bestDayByWeekdayBySupervisor[supervisor] = bests;
+                        }
+                        historicalBests = bestDayByWeekdayBySupervisor;
+                    }
+
+                    function populateWeeklyFilters() {
+                        const supervisors = [...new Set(allSalesData.map(item => item.SUPERV).filter(Boolean).filter(sup => sup !== 'BALCAO'))].sort();
+                        weeklySupervisorFilter.innerHTML = '';
+                        supervisors.forEach(sup => { weeklySupervisorFilter.innerHTML += \`<div class="flex items-center"><input id="sup-check-\${sup.replace(/\\s+/g, '-')}" type="checkbox" value="\${sup}" class="w-4 h-4 text-teal-600 bg-slate-700 border-slate-600 rounded focus:ring-teal-600 ring-offset-slate-800 focus:ring-2"><label for="sup-check-\${sup.replace(/\\s+/g, '-')}" class="ml-2 text-sm font-medium text-slate-300">\${sup}</label></div>\`; });
+                    }
+
+                    function updateWeeklyView() {
+                        const selectedSupervisors = Array.from(weeklySupervisorFilter.querySelectorAll('input:checked')).map(cb => cb.value);
+                        let dataForGeneralCharts = allSalesData;
+                        if (currentWeeklyFornecedor) dataForGeneralCharts = dataForGeneralCharts.filter(row => String(row.OBSERVACAOFOR).trim() === currentWeeklyFornecedor);
+                        if (selectedSupervisors.length > 0) dataForGeneralCharts = dataForGeneralCharts.filter(d => selectedSupervisors.includes(d.SUPERV));
+                        const today = new Date(); const currentMonth = today.getMonth(); const currentYear = today.getFullYear();
+                        const monthSales = dataForGeneralCharts.filter(d => { if (!d.DTPED) return false; const saleDate = parseDate(d.DTPED); return saleDate && saleDate.getMonth() === currentMonth && saleDate.getFullYear() === currentYear; });
+                        const totalMes = monthSales.reduce((sum, item) => sum + item.VLVENDA, 0);
+                        totalMesSemanalEl.textContent = totalMes.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+                        const salesByWeekAndDay = {}; const dayNames = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
+                        monthSales.forEach(sale => { const saleDate = parseDate(sale.DTPED); if (!saleDate) return; const weekNum = getWeekOfMonth(saleDate); const dayName = dayNames[saleDate.getDay()]; if (!salesByWeekAndDay[weekNum]) salesByWeekAndDay[weekNum] = {}; if (!salesByWeekAndDay[weekNum][dayName]) salesByWeekAndDay[weekNum][dayName] = 0; salesByWeekAndDay[weekNum][dayName] += sale.VLVENDA; });
+                        const weekLabels = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta'];
+                        const weekNumbers = Object.keys(salesByWeekAndDay).sort((a,b) => a - b);
+                        const professionalPalette = ['#14b8a6', '#6366f1', '#ec4899', '#f97316', '#8b5cf6'];
+                        const currentMonthDatasets = weekNumbers.map((weekNum, index) => ({ label: \`Semana \${weekNum}\`, data: weekLabels.map(day => salesByWeekAndDay[weekNum][day] || 0), backgroundColor: professionalPalette[index % professionalPalette.length] }));
+                        const supervisorsForHistory = selectedSupervisors.length > 0 ? selectedSupervisors : Object.keys(historicalBests).map(s => s.toLowerCase().replace(/(?:^|\\s)\\S/g, a => a.toUpperCase()));
+                        const historicalDataForChart = [0, 0, 0, 0, 0];
+                        supervisorsForHistory.forEach(sup => { const bests = historicalBests[sup.toUpperCase()]; if(bests) { historicalDataForChart[0] += bests[1] || 0; historicalDataForChart[1] += bests[2] || 0; historicalDataForChart[2] += bests[3] || 0; historicalDataForChart[3] += bests[4] || 0; historicalDataForChart[4] += bests[5] || 0; } });
+                        const historicalDataset = { type: 'line', label: 'Melhor Dia Mês Anterior', data: historicalDataForChart, borderColor: '#f59e0b', backgroundColor: 'transparent', pointBackgroundColor: '#f59e0b', pointRadius: 4, tension: 0.1, borderWidth: 2, yAxisID: 'y', datalabels: { display: false } };
+                        const finalDatasets = [...currentMonthDatasets, historicalDataset];
+                        const weeklyChartOptions = { plugins: { legend: { display: true, onClick: (e, legendItem, legend) => { const index = legendItem.datasetIndex; const ci = legend.chart; if (ci.isDatasetVisible(index)) { ci.hide(index); legendItem.hidden = true; } else { ci.show(index); legendItem.hidden = false; } let newTotal = 0; ci.data.datasets.forEach((dataset, i) => { if (ci.isDatasetVisible(i) && dataset.type !== 'line') newTotal += dataset.data.reduce((acc, val) => acc + val, 0); }); totalMesSemanalEl.textContent = newTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }); } } } };
+                        createChart('weeklySalesChart', 'bar', weekLabels, finalDatasets, weeklyChartOptions);
+                        const weeklySummaryTableBody = document.getElementById('weekly-summary-table-body');
+                        if (weeklySummaryTableBody) {
+                            weeklySummaryTableBody.innerHTML = ''; let grandTotal = 0;
+                            Object.keys(salesByWeekAndDay).sort((a,b) => parseInt(a) - parseInt(b)).forEach(weekNum => { const weekTotal = Object.values(salesByWeekAndDay[weekNum]).reduce((a, b) => a + b, 0); grandTotal += weekTotal; weeklySummaryTableBody.innerHTML += \`<tr class="hover:bg-slate-700"><td class="px-4 py-2">Semana \${weekNum}</td><td class="px-4 py-2 text-right">\${weekTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td></tr>\`; });
+                            weeklySummaryTableBody.innerHTML += \`<tr class="font-bold bg-slate-700/50"><td class="px-4 py-2">Total do Mês</td><td class="px-4 py-2 text-right">\${grandTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td></tr>\`;
+                        }
+                        const dataForRankings = dataForGeneralCharts.filter(d => d.SUPERV !== 'BALCAO');
+                        const positivacao = {}; dataForRankings.forEach(d => { if (!d.NOME || !d.CODCLI) return; if (!positivacao[d.NOME]) positivacao[d.NOME] = new Set(); positivacao[d.NOME].add(d.CODCLI); });
+                        const positivacaoRank = Object.entries(positivacao).map(([v, c]) => ({ vendedor: v, total: c.size })).sort((a, b) => b.total - a.total).slice(0, 10);
+                        if (positivacaoRank.length > 0) createChart('positivacaoChart', 'bar', positivacaoRank.map(r => getFirstName(r.vendedor)), positivacaoRank.map(r => r.total));
+                        else showNoDataMessage('positivacaoChart', 'Sem dados para o ranking.');
+                        const salesBySeller = {}; dataForRankings.forEach(d => { if (!d.NOME) return; salesBySeller[d.NOME] = (salesBySeller[d.NOME] || 0) + d.VLVENDA; });
+                        const topSellersRank = Object.entries(salesBySeller).sort(([, a], [, b]) => b - a).slice(0, 10);
+                        if (topSellersRank.length > 0) createChart('topSellersChart', 'bar', topSellersRank.map(r => getFirstName(r[0])), topSellersRank.map(r => r[1]));
+                        else showNoDataMessage('topSellersChart', 'Sem dados para o ranking.');
+                        const vendorsInFilter = [...new Set(dataForRankings.map(d => d.NOME))].filter(v => v !== 'VD HIAGO');
+                        const mixRank = vendorsInFilter.map(vendedor => { const vendorSales = dataForRankings.filter(d => d.NOME === vendedor); if (vendorSales.length === 0) return { vendedor, avgMix: 0 }; const supervisor = vendorSales[0].SUPERV; let salesForMixCalc; if (supervisor === 'OSVALDO NUNES O') salesForMixCalc = vendorSales; else { const targetSuppliers = ['707', '708']; salesForMixCalc = vendorSales.filter(d => targetSuppliers.includes(String(d.CODFOR))); } const mixPerClient = {}; salesForMixCalc.forEach(d => { if (!d.CODCLI || !d.DESCRICAO) return; if (!mixPerClient[d.CODCLI]) mixPerClient[d.CODCLI] = new Set(); mixPerClient[d.CODCLI].add(d.DESCRICAO); }); const mixValues = Object.values(mixPerClient).map(p => p.size); if (mixValues.length === 0) return { vendedor, avgMix: 0 }; const avgMix = mixValues.reduce((a, b) => a + b, 0) / mixValues.length; return { vendedor, avgMix }; }).sort((a, b) => b.avgMix - a.avgMix).slice(0, 10);
+                        if(mixRank.length > 0 && mixRank.some(r => r.avgMix > 0)) createChart('mixChart', 'bar', mixRank.map(r => getFirstName(r.vendedor)), mixRank.map(r => r.avgMix));
+                        else showNoDataMessage('mixChart', 'Sem dados para o ranking.');
+                    }
+
+                    function updateSupplierFilter(dropdown, filterText, selectedArray, dataSource) {
+                        const suppliers = new Map();
+                        dataSource.forEach(s => { if(s.CODFOR && s.FORNECEDOR) suppliers.set(s.CODFOR, s.FORNECEDOR); });
+                        const sortedSuppliers = [...suppliers.entries()].sort((a, b) => a[1].localeCompare(b[1]));
+
+                        selectedArray = selectedArray.filter(cod => suppliers.has(cod));
+
+                        dropdown.innerHTML = '';
+                        sortedSuppliers.forEach(([cod, name]) => {
+                            const isChecked = selectedArray.includes(cod);
+                            dropdown.innerHTML += \`<label class="flex items-center p-2 hover:bg-slate-600 cursor-pointer"><input type="checkbox" class="form-checkbox h-4 w-4 bg-slate-800 border-slate-500 rounded text-teal-500 focus:ring-teal-500" value="\${cod}" \${isChecked ? 'checked' : ''}><span class="ml-2 text-xs">\${cod} - \${name}</span></label>\`;
+                        });
+
+                        if (selectedArray.length === 0 || selectedArray.length === sortedSuppliers.length) {
+                            filterText.textContent = 'Todos Fornecedores';
+                        } else if (selectedArray.length === 1) {
+                            filterText.textContent = suppliers.get(selectedArray[0]) || '1 selecionado';
+                        } else {
+                            filterText.textContent = \`\${selectedArray.length} fornecedores selecionados\`;
+                        }
+                        return selectedArray;
+                    }
+
+
+                    function updateComparisonCitySuggestions(dataSource) {
+                        const inputValue = comparisonCityFilter.value.toLowerCase();
+                        const allAvailableCities = [...new Set(dataSource.map(c => c.CIDADE).filter(Boolean))].sort();
+                        const filteredCities = inputValue ? allAvailableCities.filter(c => c.toLowerCase().includes(inputValue)) : allAvailableCities;
+                        if (filteredCities.length > 0 && document.activeElement === comparisonCityFilter) {
+                            comparisonCitySuggestions.innerHTML = filteredCities.map(c => \`<div class="p-2 hover:bg-slate-600 cursor-pointer">\${c}</div>\`).join('');
+                            comparisonCitySuggestions.classList.remove('hidden');
+                        } else comparisonCitySuggestions.classList.add('hidden');
+                    }
+                    
+                    function getPositiveClients(salesData) {
+                        const salesByClient = new Map();
+                        salesData.forEach(sale => {
+                            const codCli = sale.CODCLI;
+                            if (!codCli) return;
+                            const currentTotal = salesByClient.get(codCli) || 0;
+                            salesByClient.set(codCli, currentTotal + sale.VLVENDA);
+                        });
+
+                        const positiveClients = new Set();
+                        for (const [codCli, totalVenda] of salesByClient.entries()) {
+                            if (totalVenda > 0) {
+                                positiveClients.add(codCli);
+                            }
+                        }
+                        return positiveClients;
+                    }
+                    
+                    // ===================================================================
+                    // LÓGICA CORRIGIDA PARA O GRÁFICO DE COMPARAÇÃO SEMANAL
+                    // ===================================================================
+
+                    /**
+                     * Gera as semanas de um mês, sempre de Domingo a Sábado.
+                     * @param {number} year - O ano.
+                     * @param {number} month - O mês (0-11).
+                     * @returns {Array<{start: Date, end: Date}>} - Um array com as datas de início e fim de cada semana.
+                     */
+                    function getSundayBasedWeeks(year, month) {
+                        const weeks = [];
+                        const firstDayOfMonth = new Date(year, month, 1);
+                        const lastDayOfMonth = new Date(year, month + 1, 0);
+
+                        let startDate = new Date(firstDayOfMonth);
+                        startDate.setHours(0, 0, 0, 0);
+                        startDate.setDate(startDate.getDate() - startDate.getDay());
+
+                        while (startDate <= lastDayOfMonth) {
+                            let endDate = new Date(startDate);
+                            endDate.setDate(startDate.getDate() + 6);
+                            endDate.setHours(23, 59, 59, 999);
+                            weeks.push({ start: new Date(startDate), end: new Date(endDate) });
+                            startDate.setDate(startDate.getDate() + 7);
+                        }
+                        return weeks;
+                    }
+
+                    function updateComparisonView() {
+                        const supervisor = comparisonSupervisorFilter.value;
+                        const selectedCity = comparisonCityFilter.value.trim();
+
+                        // Aplica filtros de Supervisor, Vendedor, Fornecedor e Cidade
+                        const applyFilters = (data) => {
+                            return data.filter(s => 
+                                (!currentComparisonFornecedor || s.OBSERVACAOFOR === currentComparisonFornecedor) && 
+                                (!supervisor || s.SUPERV === supervisor) && 
+                                (selectedComparisonSellers.length === 0 || selectedComparisonSellers.includes(s.NOME)) && 
+                                (selectedComparisonSuppliers.length === 0 || selectedComparisonSuppliers.includes(String(s.CODFOR))) && 
+                                (!selectedCity || (s.CIDADE && s.CIDADE.toLowerCase() === selectedCity.toLowerCase()))
+                            );
+                        };
+                        
+                        const currentSales = applyFilters(allSalesData);
+                        const historySales = applyFilters(allHistoryData);
+                        
+                        // O cálculo de KPIs gerais não muda
+                        const historyTotalFat = historySales.reduce((sum, item) => sum + item.VLVENDA, 0);
+                        const currentTotalFat = currentSales.reduce((sum, item) => sum + item.VLVENDA, 0);
+                        const historyTotalPeso = historySales.reduce((sum, item) => sum + item.TOTPESOLIQ, 0);
+                        const currentTotalPeso = currentSales.reduce((sum, item) => sum + item.TOTPESOLIQ, 0);
+                        const positiveCurrentClientsSet = getPositiveClients(currentSales);
+                        const positiveHistoryClientsSet = getPositiveClients(historySales);
+                        const currentClients = positiveCurrentClientsSet.size;
+                        const historyClients = positiveHistoryClientsSet.size;
+                        const historyMonthsCount = getUniqueMonthCount(historySales);
+                        const historyTicket = historyClients > 0 ? historyTotalFat / historyClients : 0;
+                        const currentTicket = currentClients > 0 ? currentTotalFat / currentClients : 0;
+                        renderKpiCards([ { title: 'Faturamento Total', current: currentTotalFat, history: historyTotalFat / historyMonthsCount, format: 'currency' }, { title: 'Peso Total (Ton)', current: currentTotalPeso / 1000, history: historyTotalPeso / 1000 / historyMonthsCount, format: 'decimal' }, { title: 'Clientes Atendidos', current: currentClients, history: historyClients / historyMonthsCount, format: 'integer' }, { title: 'Ticket Médio', current: currentTicket, history: historyTicket / historyMonthsCount, format: 'currency' } ]);
+
+                        if (comparisonChartType === 'weekly') {
+                            monthlyComparisonChartContainer.classList.add('hidden');
+                            weeklyComparisonChartContainer.classList.remove('hidden');
+                            comparisonChartTitle.textContent = 'Comparativo de Faturamento Semanal';
+
+                            const mostRecentSaleDate = allSalesData.length > 0 ? new Date(Math.max.apply(null, allSalesData.map(s => parseDate(s.DTPED)).filter(Boolean))) : new Date();
+                            const currentYear = mostRecentSaleDate.getFullYear();
+                            const currentMonth = mostRecentSaleDate.getMonth();
+                            
+                            const currentMonthWeeks = getSundayBasedWeeks(currentYear, currentMonth);
+                            const weekLabels = currentMonthWeeks.map((w, i) => \`Semana \${i + 1}\`);
+                            let currentSalesByWeek = new Array(currentMonthWeeks.length).fill(0);
+                            
+                            const combinedDataForWeeklyChart = [...applyFilters(allSalesData), ...applyFilters(allHistoryData)];
+                            combinedDataForWeeklyChart.forEach(sale => {
+                                const saleDate = parseDate(sale.DTPED);
+                                if (!saleDate) return;
+                                const weekIndex = currentMonthWeeks.findIndex(week => saleDate >= week.start && saleDate <= week.end);
+                                if (weekIndex !== -1) {
+                                    currentSalesByWeek[weekIndex] += sale.VLVENDA;
+                                }
+                            });
+
+                            // *** NOVA LÓGICA DE TENDÊNCIA SEMANAL ***
+                            if (useTendencyComparison) {
+                                const today = new Date();
+                                today.setHours(0,0,0,0);
+                                const currentWeekIndex = currentMonthWeeks.findIndex(week => today >= week.start && today <= week.end);
+
+                                if (currentWeekIndex !== -1) {
+                                    const currentWeek = currentMonthWeeks[currentWeekIndex];
+                                    let passedWorkDays = 0;
+                                    let totalWorkDays = 0;
+                                    
+                                    for (let d = new Date(currentWeek.start); d <= currentWeek.end; d.setDate(d.getDate() + 1)) {
+                                        const dayOfWeek = d.getDay();
+                                        if (dayOfWeek >= 1 && dayOfWeek <= 5) { // de Segunda a Sexta
+                                            totalWorkDays++;
+                                            if (d <= today) {
+                                                passedWorkDays++;
+                                            }
+                                        }
+                                    }
+                                    
+                                    if (passedWorkDays > 0 && totalWorkDays > 0) {
+                                        const salesInCurrentWeekSoFar = currentSalesByWeek[currentWeekIndex];
+                                        const projectionFactor = totalWorkDays / passedWorkDays;
+                                        const projectedSales = salesInCurrentWeekSoFar * projectionFactor;
+                                        
+                                        // Cria uma cópia para não alterar o valor real
+                                        const projectedSalesByWeek = [...currentSalesByWeek];
+                                        projectedSalesByWeek[currentWeekIndex] = projectedSales;
+                                        currentSalesByWeek = projectedSalesByWeek; // Usa a projeção no gráfico
+                                    }
+                                }
+                            }
+
+                            const historySalesByMonthAndWeek = {};
+                            const historyMonthsSet = new Set();
+                            historySales.forEach(sale => {
+                                const saleDate = parseDate(sale.DTPED);
+                                if (!saleDate) return;
+                                const saleYear = saleDate.getFullYear();
+                                const saleMonth = saleDate.getMonth();
+                                historyMonthsSet.add(\`\${saleYear}-\${saleMonth}\`);
+                                if (!historySalesByMonthAndWeek[saleMonth]) {
+                                    historySalesByMonthAndWeek[saleMonth] = {};
+                                }
+                                const monthWeeks = getSundayBasedWeeks(saleYear, saleMonth);
+                                const weekIndex = monthWeeks.findIndex(week => saleDate >= week.start && saleDate <= week.end);
+                                if (weekIndex !== -1) {
+                                    const weekNum = weekIndex + 1;
+                                    historySalesByMonthAndWeek[saleMonth][weekNum] = (historySalesByMonthAndWeek[saleMonth][weekNum] || 0) + sale.VLVENDA;
+                                }
+                            });
+
+                            const monthCount = historyMonthsSet.size || 1;
+                            const historyAvgSalesByWeek = new Array(currentMonthWeeks.length).fill(0);
+                            for (let i = 0; i < currentMonthWeeks.length; i++) {
+                                const weekNum = i + 1;
+                                let totalForWeek = 0;
+                                for (const monthKey in historySalesByMonthAndWeek) {
+                                    totalForWeek += historySalesByMonthAndWeek[monthKey][weekNum] || 0;
+                                }
+                                historyAvgSalesByWeek[i] = totalForWeek / monthCount;
+                            }
+                            
+                            createChart('weeklyComparisonChart', 'line', weekLabels, [ { label: 'Mês Atual', data: currentSalesByWeek, borderColor: '#14b8a6', tension: 0.1 }, { label: 'Média Trimestre', data: historyAvgSalesByWeek, borderColor: '#f97316', tension: 0.1 } ], { plugins: { legend: { display: true } } });
+
+                        } else if (comparisonChartType === 'monthly') {
+                            weeklyComparisonChartContainer.classList.add('hidden');
+                            monthlyComparisonChartContainer.classList.remove('hidden');
+                            comparisonChartTitle.textContent = 'Comparativo de Faturamento Mensal';
+
+                            let monthlyCurrentSales = currentSales;
+                            if (useTendencyComparison) {
+                                const totalDays = parseInt(comparisonWorkingDaysInput.value, 10) || 0;
+                                const passedDays = parseInt(comparisonPassedWorkingDaysInput.value, 10) || 1;
+                                if (totalDays > 0 && passedDays > 0 && passedDays <= totalDays) {
+                                    const projectionFactor = totalDays / passedDays;
+                                    monthlyCurrentSales = monthlyCurrentSales.map(sale => ({ ...sale, VLVENDA: sale.VLVENDA * projectionFactor}));
+                                }
+                            }
+                            const monthlyCurrentTotalFat = monthlyCurrentSales.reduce((sum, item) => sum + item.VLVENDA, 0);
+
+                            const salesByMonth = {};
+                            historySales.forEach(sale => {
+                                const saleDate = parseDate(sale.DTPED);
+                                if (!saleDate) return;
+                                const monthKey = \`\${saleDate.getFullYear()}-\${String(saleDate.getMonth() + 1).padStart(2, '0')}\`;
+                                salesByMonth[monthKey] = (salesByMonth[monthKey] || 0) + sale.VLVENDA;
+                            });
+
+                            const sortedMonths = Object.keys(salesByMonth).sort();
+                            const monthLabels = sortedMonths.map(monthKey => {
+                                const [year, month] = monthKey.split('-');
+                                return new Date(parseInt(year), parseInt(month) - 1, 1).toLocaleString('pt-BR', { month: 'short', year: '2-digit' });
+                            });
+                            const monthValues = sortedMonths.map(monthKey => salesByMonth[monthKey]);
+
+                            let currentMonthLabel = 'Mês Atual';
+                            if (currentSales.length > 0) {
+                                const firstSaleDate = parseDate(currentSales[0].DTPED);
+                                if (firstSaleDate) {
+                                    currentMonthLabel = firstSaleDate.toLocaleString('pt-BR', { month: 'short', year: '2-digit' });
+                                }
+                            }
+                            
+                            const existingIndex = monthLabels.indexOf(currentMonthLabel);
+                            if (existingIndex !== -1) {
+                                monthValues[existingIndex] = monthlyCurrentTotalFat;
+                            } else {
+                                monthLabels.push(currentMonthLabel);
+                                monthValues.push(monthlyCurrentTotalFat);
+                            }
+
+                            createChart('monthlyComparisonChart', 'bar', monthLabels, [{
+                                label: 'Faturamento Mensal',
+                                data: monthValues,
+                                backgroundColor: '#14b8a6'
+                            }], {
+                                plugins: {
+                                    legend: { display: false },
+                                    datalabels: {
+                                        formatter: (value) => 'R$ ' + (value / 1000).toFixed(0) + 'k'
+                                    }
+                                }
+                            });
+                        }
+
+                        const supervisorComparison = {};
+                        const activeSupervisors = [...new Set(allSalesData.map(s => s.SUPERV))].filter(Boolean);
+                        activeSupervisors.forEach(sup => supervisorComparison[sup] = { current: 0, history: 0 });
+                        currentSales.forEach(s => { if(s.SUPERV && supervisorComparison[s.SUPERV]) supervisorComparison[s.SUPERV].current += s.VLVENDA; });
+                        historySales.forEach(s => { if(s.SUPERV && supervisorComparison[s.SUPERV]) supervisorComparison[s.SUPERV].history += s.VLVENDA; });
+                        Object.keys(supervisorComparison).forEach(sup => supervisorComparison[sup].history /= historyMonthsCount);
+                        const supervisorTableBody = document.getElementById('supervisorComparisonTableBody');
+                        supervisorTableBody.innerHTML = Object.entries(supervisorComparison).map(([sup, data]) => { const variation = data.history > 0 ? ((data.current - data.history) / data.history) * 100 : (data.current > 0 ? 100 : 0); const colorClass = variation > 0 ? 'text-green-400' : variation < 0 ? 'text-red-400' : 'text-slate-400'; return \`<tr class="hover:bg-slate-700"><td class="px-4 py-2">\${sup}</td><td class="px-4 py-2 text-right">\${data.history.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td><td class="px-4 py-2 text-right">\${data.current.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td><td class="px-4 py-2 text-right \${colorClass}">\${variation.toFixed(2)}%</td></tr>\`; }).join('');
+
+                        const productSalesCurrent = {};
+                        const productSalesHistory = {};
+                        currentSales.forEach(s => { if (!productSalesCurrent[s.DESCRICAO]) productSalesCurrent[s.DESCRICAO] = { value: 0, code: s.PRODUTO }; productSalesCurrent[s.DESCRICAO].value += s.QTVENDA_EMBALAGEM_MASTER; });
+                        historySales.forEach(s => { if (!productSalesHistory[s.DESCRICAO]) productSalesHistory[s.DESCRICAO] = { value: 0, code: s.PRODUTO }; productSalesHistory[s.DESCRICAO].value += s.QTVENDA_EMBALAGEM_MASTER; });
+                        Object.keys(productSalesHistory).forEach(prod => productSalesHistory[prod].value /= historyMonthsCount);
+                        const allProducts = [...new Set([...Object.keys(productSalesCurrent), ...Object.keys(productSalesHistory)])];
+                        const productChanges = []; const newProducts = []; const lostProducts = [];
+                        allProducts.forEach(prod => {
+                            const currentInfo = productSalesCurrent[prod] || { value: 0, code: (productSalesHistory[prod] ? productSalesHistory[prod].code : 'N/A') };
+                            const historyInfo = productSalesHistory[prod] || { value: 0, code: (productSalesCurrent[prod] ? productSalesCurrent[prod].code : 'N/A') };
+                            const currentVal = currentInfo.value; const historyVal = historyInfo.value;
+                            const productCode = currentInfo.code !== 'N/A' ? currentInfo.code : historyInfo.code;
+                            if (currentVal > 0 && historyVal > 0) productChanges.push({ product: prod, code: productCode, diff: currentVal - historyVal, current: currentVal, history: historyVal });
+                            else if (currentVal > 0 && historyVal === 0) newProducts.push({ product: prod, code: productCode, current: currentVal });
+                            else if (currentVal === 0 && historyVal > 0) lostProducts.push({ product: prod, code: productCode, history: historyVal });
+                        });
+                        const growthProducts = productChanges.filter(p => p.diff > 0).sort((a,b) => b.diff - a.diff);
+                        const declineProducts = productChanges.filter(p => p.diff < 0).sort((a,b) => a.diff - b.diff);
+                        renderProductTable('top-growth-products-table', growthProducts, true);
+                        renderProductTable('top-decline-products-table', declineProducts, true);
+                        renderProductTable('new-products-table', newProducts.sort((a,b) => b.current - a.current), false);
+                        renderProductTable('lost-products-table', lostProducts.sort((a,b) => b.history - a.history), false);
+                    }
+
+                    function renderKpiCards(kpis) {
+                        const container = document.getElementById('comparison-kpi-container');
+                        container.innerHTML = kpis.map(kpi => { const variation = kpi.history > 0 ? ((kpi.current - kpi.history) / kpi.history) * 100 : (kpi.current > 0 ? 100 : 0); const colorClass = variation > 0 ? 'text-green-400' : variation < 0 ? 'text-red-400' : 'text-slate-400'; const formatValue = (val, format) => { if (format === 'currency') return val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }); if (format === 'decimal') return val.toLocaleString('pt-BR', { minimumFractionDigits: 3, maximumFractionDigits: 3 }); return val.toLocaleString('pt-BR', { maximumFractionDigits: 0 }); }; return \`<div class="bg-slate-800 p-4 rounded-lg text-center"><p class="text-slate-400 text-sm">\${kpi.title}</p><p class="text-2xl font-bold text-white my-2">\${formatValue(kpi.current, kpi.format)}</p><p class="text-sm \${colorClass}">\${variation.toFixed(2)}% vs Média do Trimestre</p><p class="text-xs text-slate-500">Média Trim.: \${formatValue(kpi.history, kpi.format)}</p></div>\`; }).join('');
+                    }
+                    
+                    function renderProductTable(elementId, data, showVariation) {
+                        const container = document.getElementById(elementId);
+                        let header = '<th class="px-4 py-2">Produto</th><th class="px-4 py-2 text-right">Qtde. Emb. Master (Atual)</th>';
+                        if (showVariation) header += '<th class="px-4 py-2 text-right">Média Trim. (Emb.)</th><th class="px-4 py-2 text-right">Variação (Emb.)</th>';
+                        else header = '<th class="px-4 py-2">Produto</th><th class="px-4 py-2 text-right">Qtde. Emb. Master</th>';
+                        const rows = data.map(item => {
+                            const productName = \`(\${item.code}) \${item.product}\`;
+                            const formatNumber = (num) => num.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                            if (showVariation) {
+                                const variation = item.diff;
+                                const colorClass = variation > 0 ? 'text-green-400' : 'text-red-400';
+                                return \`<tr class="hover:bg-slate-700/50"><td class="px-4 py-2 text-xs">\${productName}</td><td class="px-4 py-2 text-right text-xs">\${formatNumber(item.current)}</td><td class="px-4 py-2 text-right text-xs">\${formatNumber(item.history)}</td><td class="px-4 py-2 text-right text-xs \${colorClass}">\${formatNumber(variation)}</td></tr>\`;
+                            } else {
+                                 return \`<tr class="hover:bg-slate-700/50"><td class="px-4 py-2 text-xs">\${productName}</td><td class="px-4 py-2 text-right text-xs">\${formatNumber(item.current || item.history)}</td></tr>\`;
+                            }
+                        }).join('');
+                        container.innerHTML = \`<table class="min-w-full text-sm text-left"><thead class="text-xs text-slate-300 uppercase sticky-header"><tr>\${header}</tr></thead><tbody class="divide-y divide-slate-700">\${rows}</tbody></table>\`;
+                    }
+
+                    function openModal(pedidoId) {
+                        const orderInfo = aggregatedOrders.find(order => order.PEDIDO == pedidoId);
+                        const itemsDoPedido = allSalesData.filter(item => item.PEDIDO == pedidoId);
+                        if (!orderInfo) return;
+                        modalPedidoId.textContent = pedidoId;
+                        modalHeaderInfo.innerHTML = \`<div><p class="font-bold">Cód. Cliente:</p><p>\${orderInfo.CODCLI || 'N/A'}</p></div><div><p class="font-bold">Cliente:</p><p>\${orderInfo.CLIENTE_NOME || 'N/A'}</p></div><div><p class="font-bold">Vendedor:</p><p>\${orderInfo.NOME || 'N/A'}</p></div><div><p class="font-bold">Data Pedido:</p><p>\${formatDate(orderInfo.DTPED)}</p></div><div><p class="font-bold">Data Faturamento:</p><p>\${formatDate(orderInfo.DTSAIDA)}</p></div><div><p class="font-bold">Cidade:</p><p>\${orderInfo.CIDADE || 'N/A'}</p></div>\`;
+                        modalTableBody.innerHTML = itemsDoPedido.map(item => { const unitPrice = (item.QTVENDA > 0) ? (item.VLVENDA / item.QTVENDA) : 0; return \`<tr class="hover:bg-slate-700"><td class="px-4 py-2">(\${item.PRODUTO}) \${item.DESCRICAO}</td><td class="px-4 py-2 text-right">\${item.QTVENDA}</td><td class="px-4 py-2 text-right">\${item.TOTPESOLIQ.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} Kg</td><td class="px-4 py-2 text-right"><div class="tooltip">\${unitPrice.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}<span class="tooltip-text" style="width: max-content; transform: translateX(-50%); margin-left: 0;">Subtotal: \${item.VLVENDA.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span></div></td></tr>\`; }).join('');
+                        modalFooterTotal.innerHTML = \`<p class="text-lg font-bold text-teal-400">Mix de Produtos: \${itemsDoPedido.length}</p><p class="text-lg font-bold text-emerald-400">Total do Pedido: \${orderInfo.VLVENDA.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>\`;
+                        modal.classList.remove('hidden');
+                    }
+
+                    function openClientModal(codcli) {
+                        const clientData = allClientsData.find(c => String(c['Código']) === String(codcli));
+                        if (!clientData) return;
+                        let finalAddress = clientData.endereco || 'N/A';
+                        const number = clientData.numero || 'SN';
+                        if (number !== 'SN' && finalAddress !== 'N/A' && !finalAddress.includes(number)) finalAddress += \`, \${number}\`;
+                        clientModalContent.innerHTML = \`<div class="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4 text-sm"><div><p class="font-bold text-slate-400">Código:</p><p>\${clientData['Código'] || 'N/A'}</p></div><div><p class="font-bold text-slate-400">CNPJ/CPF:</p><p>\${clientData.cnpj_cpf || 'N/A'}</p></div><div class="md:col-span-2"><p class="font-bold text-slate-400">Insc. Est. / Produtor:</p><p>\${clientData.inscricaoEstadual || 'N/A'}</p></div><div class="md:col-span-2"><p class="font-bold text-slate-400">Razão Social:</p><p>\${clientData.razaoSocial || 'N/A'}</p></div><div class="md:col-span-2"><p class="font-bold text-slate-400">Nome Fantasia:</p><p>\${clientData.fantasia || 'N/A'}</p></div><div class="md:col-span-2"><p class="font-bold text-slate-400">Endereço:</p><p>\${finalAddress}</p></div><div><p class="font-bold text-slate-400">Bairro:</p><p>\${clientData.bairro || 'N/A'}</p></div><div><p class="font-bold text-slate-400">Cidade:</p><p>\${clientData.cidade || 'N/A'}</p></div><div><p class="font-bold text-slate-400">CEP:</p><p>\${clientData.cep || 'N/A'}</p></div><div><p class="font-bold text-slate-400">Telefone:</p><p>\${clientData.telefone || 'N/A'}</p></div><div class="md:col-span-2"><p class="font-bold text-slate-400">E-mail:</p><p>\${clientData.email || 'N/A'}</p></div><div><p class="font-bold text-slate-400">Ramo de Atividade:</p><p>\${clientData.ramo || 'N/A'}</p></div><div><p class="font-bold text-slate-400">Última Compra:</p><p>\${formatDate(clientData.ultimaCompra)}</p></div></div>\`;
+                        clientModal.classList.remove('hidden');
+                    }
+                    
+                    function exportClientsPDF(clientList, title, filename, includeFaturamento) {
+                         if (clientList.length === 0) return;
+                        const { jsPDF } = window.jspdf; const doc = new jsPDF();
+                        const supervisor = citySupervisorFilter.value || 'Todos'; const vendedor = selectedCitySellers.length > 0 ? selectedCitySellers.join(', ') : 'Todos';
+                        const generationDate = new Date().toLocaleString('pt-BR'); const today = new Date();
+                        const firstDay = new Date(today.getFullYear(), today.getMonth(), 1).toLocaleDateString('pt-BR');
+                        const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0).toLocaleDateString('pt-BR');
+                        doc.setFontSize(18); doc.text(title, 14, 22); doc.setFontSize(11); doc.setTextColor(100);
+                        doc.text(\`Período de Análise: \${firstDay} a \${lastDay}\`, 14, 32);
+                        doc.text(\`Supervisor: \${supervisor}\`, 14, 38); doc.text(\`Vendedor: \${vendedor}\`, 14, 44);
+                        doc.text(\`Data de Emissão: \${generationDate}\`, 14, 50);
+                        const tableColumn = ["Código", "Cliente", "Bairro", "Cidade", "Últ. Compra"];
+                        if (includeFaturamento) tableColumn.splice(2, 0, "Faturamento");
+                        const tableRows = [];
+                        clientList.forEach(client => {
+                            const clientData = [ client['Código'] || '', client.fantasia || client.razaoSocial || '', client.bairro || '', client.cidade || '', formatDate(client.ultimaCompra) || 'N/A' ];
+                            if (includeFaturamento) clientData.splice(2, 0, (client.total || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }));
+                            tableRows.push(clientData);
+                        });
+                        doc.autoTable({ head: [tableColumn], body: tableRows, startY: 60, theme: 'grid', styles: { fontSize: 8, cellPadding: 1.5 }, headStyles: { fillColor: [41, 128, 185], textColor: 255, fontSize: 8, fontStyle: 'bold' }, alternateRowStyles: { fillColor: [240, 248, 255] }, margin: { top: 10 } });
+                        const pageCount = doc.internal.getNumberOfPages();
+                        for(let i = 1; i <= pageCount; i++) { doc.setPage(i); doc.setFontSize(9); doc.setTextColor(150); doc.text(\`Página \${i} de \${pageCount}\`, doc.internal.pageSize.width / 2, doc.internal.pageSize.height - 10, { align: 'center' }); }
+                        const fileNameVendedor = vendedor.replace(/[^a-z0-9]/gi, '_').toLowerCase() || 'geral';
+                        doc.save(\`\${filename}_\${fileNameVendedor}_\${new Date().toISOString().slice(0,10)}.pdf\`);
+                    }
+
+                    function setupEventListeners() {
+                        viewTableBtn.addEventListener('click', () => { chartView.classList.add('hidden'); tableView.classList.remove('hidden'); viewTableBtn.classList.add('hidden'); viewChartBtn.classList.remove('hidden'); updateAllVisuals(); });
+                        viewChartBtn.addEventListener('click', () => { tableView.classList.add('hidden'); chartView.classList.remove('hidden'); viewChartBtn.classList.add('hidden'); viewTableBtn.classList.remove('hidden'); updateAllVisuals(); });
+                        viewComparisonBtn.addEventListener('click', () => { mainDashboard.classList.add('hidden'); comparisonView.classList.remove('hidden'); updateComparisonView(); });
+                        showCityBtn.addEventListener('click', () => { resetMainFilters(); mainDashboard.classList.add('hidden'); cityView.classList.remove('hidden'); document.getElementById('city-view-content').classList.add('hidden'); document.getElementById('city-view-loader').classList.remove('hidden'); setTimeout(() => { populateSupervisors('city-supervisor-filter', allSalesData); selectedCitySellers = updateSellerFilter('', cityVendedorFilterDropdown, cityVendedorFilterText, selectedCitySellers, allSalesData); updateCityView(); document.getElementById('city-view-loader').classList.add('hidden'); document.getElementById('city-view-content').classList.remove('hidden'); }, 10); });
+                        backToMainFromCityBtn.addEventListener('click', () => { resetCityFilters(); cityView.classList.add('hidden'); mainDashboard.classList.remove('hidden'); updateAllVisuals(); });
+                        showWeeklyBtn.addEventListener('click', () => { resetMainFilters(); mainDashboard.classList.add('hidden'); weeklyView.classList.remove('hidden'); populateWeeklyFilters(); updateWeeklyView(); });
+                        backToMainFromWeeklyBtn.addEventListener('click', () => { weeklyView.classList.add('hidden'); mainDashboard.classList.remove('hidden'); currentWeeklyFornecedor = ''; updateAllVisuals(); });
+                        backToMainFromComparisonBtn.addEventListener('click', () => { comparisonView.classList.add('hidden'); mainDashboard.classList.remove('hidden'); updateAllVisuals(); });
+                        supervisorFilter.addEventListener('change', () => { selectedSellers = []; updateSellerFilter(supervisorFilter.value, vendedorFilterDropdown, vendedorFilterText, selectedSellers, allSalesData); updateAllVisuals(); });
+                        vendedorFilterBtn.addEventListener('click', () => vendedorFilterDropdown.classList.toggle('hidden'));
+                        vendedorFilterDropdown.addEventListener('change', (e) => { if (e.target.type === 'checkbox') { const { value, checked } = e.target; if (checked) selectedSellers.push(value); else selectedSellers = selectedSellers.filter(s => s !== value); selectedSellers = updateSellerFilter(supervisorFilter.value, vendedorFilterDropdown, vendedorFilterText, selectedSellers, allSalesData); updateAllVisuals(); } });
+                        posicaoFilter.addEventListener('change', updateAllVisuals);
+                        codcliFilter.addEventListener('input', (e) => e.target.value = e.target.value.replace(/[^0-9]/g, ''));
+                        codcliFilter.addEventListener('change', updateAllVisuals);
+                        clearFiltersBtn.addEventListener('click', resetMainFilters);
+                        workingDaysInput.addEventListener('change', updateAllVisuals);
+                        passedWorkingDaysInput.addEventListener('change', updateAllVisuals);
+                        citySupervisorFilter.addEventListener('change', () => { selectedCitySellers = []; selectedCitySellers = updateSellerFilter(citySupervisorFilter.value, cityVendedorFilterDropdown, cityVendedorFilterText, selectedCitySellers, allSalesData); validateCityFilter(); updateCityView(); });
+                        cityVendedorFilterBtn.addEventListener('click', () => cityVendedorFilterDropdown.classList.toggle('hidden'));
+                        cityVendedorFilterDropdown.addEventListener('change', (e) => { if (e.target.type === 'checkbox') { const { value, checked } = e.target; if (checked) selectedCitySellers.push(value); else selectedCitySellers = selectedCitySellers.filter(s => s !== value); selectedCitySellers = updateSellerFilter(citySupervisorFilter.value, cityVendedorFilterDropdown, cityVendedorFilterText, selectedCitySellers, allSalesData); validateCityFilter(); updateCityView(); } });
+                        clearCityFiltersBtn.addEventListener('click', resetCityFilters);
+                        cityCodCliFilter.addEventListener('input', (e) => e.target.value = e.target.value.replace(/[^0-9]/g, ''));
+                        cityCodCliFilter.addEventListener('change', updateCityView);
+                        cityNameFilter.addEventListener('input', (e) => { e.target.value = e.target.value.replace(/[0-9]/g, ''); const relevantClients = getRelevantClientsForCityFilter(); updateCitySuggestions(cityNameFilter, citySuggestions, relevantClients); });
+                        cityNameFilter.addEventListener('focus', () => { const relevantClients = getRelevantClientsForCityFilter(); citySuggestions.classList.remove('manual-hide'); updateCitySuggestions(cityNameFilter, citySuggestions, relevantClients); });
+                        cityNameFilter.addEventListener('blur', () => setTimeout(() => citySuggestions.classList.add('hidden'), 150));
+                        cityNameFilter.addEventListener('keydown', (e) => { if (e.key === 'Enter') { citySuggestions.classList.add('hidden', 'manual-hide'); updateCityView(); e.target.blur(); } });
+                        
+                        document.addEventListener('click', (e) => { 
+                            if (!vendedorFilterBtn.contains(e.target) && !vendedorFilterDropdown.contains(e.target)) vendedorFilterDropdown.classList.add('hidden'); 
+                            if (!cityVendedorFilterBtn.contains(e.target) && !cityVendedorFilterDropdown.contains(e.target)) cityVendedorFilterDropdown.classList.add('hidden'); 
+                            if (!comparisonVendedorFilterBtn.contains(e.target) && !comparisonVendedorFilterDropdown.contains(e.target)) comparisonVendedorFilterDropdown.classList.add('hidden'); 
+                            if (!comparisonSupplierFilterBtn.contains(e.target) && !comparisonSupplierFilterDropdown.contains(e.target)) comparisonSupplierFilterDropdown.classList.add('hidden'); 
+                            if (e.target.closest('[data-pedido-id]')) { e.preventDefault(); openModal(e.target.closest('[data-pedido-id]').dataset.pedidoId); } 
+                            if (e.target.closest('[data-codcli]')) { e.preventDefault(); openClientModal(e.target.closest('[data-codcli]').dataset.codcli); } 
+                            if (e.target.closest('#city-suggestions > div')) { cityNameFilter.value = e.target.textContent; citySuggestions.classList.add('hidden'); updateCityView(); } 
+                            if (e.target.closest('#comparison-city-suggestions > div')) { comparisonCityFilter.value = e.target.textContent; comparisonCitySuggestions.classList.add('hidden'); updateComparisonView(); } 
+                            else if (!comparisonCityFilter.contains(e.target)) comparisonCitySuggestions.classList.add('hidden'); 
+                        });
+
+                        fornecedorToggleContainer.querySelectorAll('.fornecedor-btn').forEach(btn => { btn.addEventListener('click', () => { const fornecedor = btn.dataset.fornecedor; if (currentFornecedor === fornecedor) { currentFornecedor = ''; btn.classList.remove('active'); } else { currentFornecedor = fornecedor; fornecedorToggleContainer.querySelectorAll('.fornecedor-btn').forEach(b => b.classList.remove('active')); btn.classList.add('active'); } populateSupervisors('supervisor-filter', allSalesData); selectedSellers = []; updateSellerFilter(supervisorFilter.value, vendedorFilterDropdown, vendedorFilterText, selectedSellers, allSalesData); updateAllVisuals(); }); });
+                        weeklyFornecedorToggleContainer.querySelectorAll('.fornecedor-btn').forEach(btn => { btn.addEventListener('click', () => { const fornecedor = btn.dataset.fornecedor; if (currentWeeklyFornecedor === fornecedor) { currentWeeklyFornecedor = ''; btn.classList.remove('active'); } else { currentWeeklyFornecedor = fornecedor; weeklyFornecedorToggleContainer.querySelectorAll('.fornecedor-btn').forEach(b => b.classList.remove('active')); btn.classList.add('active'); } updateWeeklyView(); }); });
+                        weeklySupervisorFilter.addEventListener('change', updateWeeklyView);
+                        clearWeeklyFiltersBtn.addEventListener('click', resetWeeklyFilters);
+                        
+                        comparisonSupervisorFilter.addEventListener('change', updateComparisonView);
+                        comparisonVendedorFilterBtn.addEventListener('click', () => comparisonVendedorFilterDropdown.classList.toggle('hidden'));
+                        comparisonVendedorFilterDropdown.addEventListener('change', (e) => {
+                            if (e.target.type === 'checkbox') {
+                                const { value, checked } = e.target;
+                                if (checked) selectedComparisonSellers.push(value);
+                                else selectedComparisonSellers = selectedComparisonSellers.filter(s => s !== value);
+                                updateComparisonView();
+                            }
+                        });
+                        comparisonFornecedorToggleContainer.addEventListener('click', (e) => {
+                            if (e.target.tagName === 'BUTTON') {
+                                const fornecedor = e.target.dataset.fornecedor;
+                                if (currentComparisonFornecedor === fornecedor) {
+                                    currentComparisonFornecedor = ''; e.target.classList.remove('active');
+                                } else {
+                                    currentComparisonFornecedor = fornecedor;
+                                    comparisonFornecedorToggleContainer.querySelectorAll('.fornecedor-btn').forEach(b => b.classList.remove('active'));
+                                    e.target.classList.add('active');
+                                }
+                                updateComparisonView();
+                            }
+                        });
+                        comparisonSupplierFilterBtn.addEventListener('click', () => comparisonSupplierFilterDropdown.classList.toggle('hidden'));
+                        comparisonSupplierFilterDropdown.addEventListener('change', (e) => {
+                            if (e.target.type === 'checkbox') {
+                                const { value, checked } = e.target;
+                                if (checked) selectedComparisonSuppliers.push(value);
+                                else selectedComparisonSuppliers = selectedComparisonSuppliers.filter(s => s !== value);
+                                updateComparisonView();
+                            }
+                        });
+                        comparisonCityFilter.addEventListener('input', () => { let data = allSalesData; if(currentComparisonFornecedor) data = data.filter(s => s.OBSERVACAOFOR === currentComparisonFornecedor); if(comparisonSupervisorFilter.value) data = data.filter(s => s.SUPERV === comparisonSupervisorFilter.value); if(selectedComparisonSellers.length > 0) data = data.filter(s => selectedComparisonSellers.includes(s.NOME)); if(selectedComparisonSuppliers.length > 0) data = data.filter(s => selectedComparisonSuppliers.includes(String(s.CODFOR))); updateComparisonCitySuggestions(data); });
+                        comparisonCityFilter.addEventListener('keydown', (e) => { if (e.key === 'Enter') { comparisonCitySuggestions.classList.add('hidden'); updateComparisonView(); e.target.blur(); } });
+                        clearComparisonFiltersBtn.addEventListener('click', resetComparisonFilters);
+                        
+                        comparisonTendencyToggle.addEventListener('click', () => { 
+                            useTendencyComparison = !useTendencyComparison; 
+                            comparisonTendencyToggle.textContent = useTendencyComparison ? 'Ver Dados Reais' : 'Calcular Tendência'; 
+                            comparisonTendencyToggle.classList.toggle('bg-orange-600'); 
+                            comparisonTendencyToggle.classList.toggle('hover:bg-orange-500'); 
+                            comparisonTendencyToggle.classList.toggle('bg-purple-600'); 
+                            comparisonTendencyToggle.classList.toggle('hover:bg-purple-500'); 
+                            updateComparisonView(); 
+                        });
+                        
+                        comparisonWorkingDaysInput.addEventListener('change', () => { if(comparisonChartType === 'monthly') updateComparisonView(); });
+                        comparisonPassedWorkingDaysInput.addEventListener('change', () => { if(comparisonChartType === 'monthly') updateComparisonView(); });
+                        
+                        toggleWeeklyBtn.addEventListener('click', () => {
+                            comparisonChartType = 'weekly';
+                            toggleWeeklyBtn.classList.add('active');
+                            toggleMonthlyBtn.classList.remove('active');
+                            comparisonWorkingDaysInput.parentElement.parentElement.classList.add('hidden');
+                            updateComparisonView();
+                        });
+
+                        toggleMonthlyBtn.addEventListener('click', () => {
+                            comparisonChartType = 'monthly';
+                            toggleMonthlyBtn.classList.add('active');
+                            toggleWeeklyBtn.classList.remove('active');
+                            comparisonWorkingDaysInput.parentElement.parentElement.classList.remove('hidden');
+                            updateComparisonView();
+                        });
+
+                        document.getElementById('export-active-pdf-btn').addEventListener('click', () => exportClientsPDF(activeClientsForExport, 'Relatório de Clientes Ativos no Mês', 'clientes_ativos', true));
+                        document.getElementById('export-inactive-pdf-btn').addEventListener('click', () => exportClientsPDF(inactiveClientsForExport, 'Relatório de Clientes Sem Vendas no Mês', 'clientes_sem_vendas', false));
+                        modalCloseBtn.addEventListener('click', () => modal.classList.add('hidden'));
+                        clientModalCloseBtn.addEventListener('click', () => clientModal.classList.add('hidden'));
+                        faturamentoBtn.addEventListener('click', () => { currentProductMetric = 'faturamento'; faturamentoBtn.classList.add('active'); pesoBtn.classList.remove('active'); updateAllVisuals(); });
+                        pesoBtn.addEventListener('click', () => { currentProductMetric = 'peso'; pesoBtn.classList.add('active'); faturamentoBtn.classList.remove('active'); updateAllVisuals(); });
+                    }
+
+                    const today = new Date();
+                    workingDaysInput.value = getWorkingDays(today.getFullYear(), today.getMonth());
+                    passedWorkingDaysInput.value = getPassedWorkingDays(today.getFullYear(), today.getMonth(), today);
+                    comparisonWorkingDaysInput.value = getWorkingDays(today.getFullYear(), today.getMonth());
+                    comparisonPassedWorkingDaysInput.value = getPassedWorkingDays(today.getFullYear(), today.getMonth(), today);
+                    
+                    comparisonWorkingDaysInput.parentElement.parentElement.classList.add('hidden');
+                    
+                    calculateHistoricalBests();
+                    populateSupervisors('supervisor-filter', allSalesData);
+                    populateSupervisors('city-supervisor-filter', allSalesData);
+                    populateSupervisors('comparison-supervisor-filter', allSalesData);
+                    updateSellerFilter('', vendedorFilterDropdown, vendedorFilterText, selectedSellers, allSalesData);
+                    updateSellerFilter('', cityVendedorFilterDropdown, cityVendedorFilterText, selectedCitySellers, allSalesData);
+                    updateSellerFilter('', comparisonVendedorFilterDropdown, comparisonVendedorFilterText, selectedComparisonSellers, allSalesData);
+                    updateSupplierFilter(comparisonSupplierFilterDropdown, comparisonSupplierFilterText, selectedComparisonSuppliers, allSalesData);
+                    setupEventListeners();
+                    updateAllVisuals();
+                    renderTable(aggregatedOrders);
+                `;
+
+                // The final report HTML template remains the same for now.
+                const reportTemplate = `
+                    <!DOCTYPE html>
+                    <html lang="pt-br">
+                    <head>
+                        <meta charset="UTF-8">
+                        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                        <title>PRIME DISTRIBUIÇÃO</title>
+                        <link rel="icon" type="image/jpeg" href="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSnaaZ2WnZBJIxPRfabS4Ug78PKK6Gu3nbHlw&s">
+                        <script src="https://cdn.tailwindcss.com"><\/script>
+                        <script src="https://cdn.jsdelivr.net/npm/chart.js"><\/script>
+                        <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"><\/script>
+                        <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"><\/script>
+                        <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js"><\/script>
+                        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+                        <style> body { font-family: 'Inter', sans-serif; } ::-webkit-scrollbar { width: 8px; } ::-webkit-scrollbar-track { background: #0f172a; } ::-webkit-scrollbar-thumb { background: #475569; border-radius: 10px; } ::-webkit-scrollbar-corner { background: #0f172a; } .sticky-header th { position: sticky; top: 0; z-index: 10; background-color: #1e293b; } .hidden { display: none; } .metric-btn.active, .fornecedor-btn.active, .comparison-toggle-btn.active { background-color: #0d9488; color: #FFF; } .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; z-index: 1000; } .tooltip { position: relative; display: inline-block; cursor: pointer; } .tooltip .tooltip-text { visibility: hidden; width: 220px; background-color: #1e293b; color: #fff; border-radius: 6px; padding: 8px; position: absolute; z-index: 1001; bottom: 125%; left: 50%; margin-left: -110px; opacity: 0; transition: opacity 0.3s; pointer-events: none; } .tooltip:hover .tooltip-text { visibility: visible; opacity: 1; } .custom-scrollbar::-webkit-scrollbar { width: 8px; } .custom-scrollbar::-webkit-scrollbar-track { background: #1e293b; } .custom-scrollbar::-webkit-scrollbar-thumb { background-color: #475569; border-radius: 10px; } </style>
+                    </head>
+                    <body class="bg-slate-900 text-slate-200 antialiased">
+                        <!-- All the report body HTML remains the same -->
+                        <div id="main-dashboard">
+                            <div class="container mx-auto p-4 sm:p-6 lg:p-8">
+                                <header class="mb-6 flex flex-col sm:flex-row justify-between items-center gap-4">
+                                    <div class="text-center sm:text-left"><h1 class="text-2xl font-bold text-white"><span style="color: #FFC000;">PRIME</span> DISTRIBUIÇÃO</h1><p class="text-slate-400 mt-1">Dados atualizados em: ${generationDate}</p></div>
+                                    <div class="flex gap-4 sm:gap-6 items-center"><div class="text-right"><p class="text-slate-400 text-sm">Peso Total</p><p id="total-peso" class="text-xl sm:text-2xl font-bold text-emerald-400">0,000 Ton</p></div><div class="text-right"><p class="text-slate-400 text-sm">Faturamento Total</p><p id="total-vendas" class="text-xl sm:text-2xl font-bold text-emerald-400">R$ 0,00</p></div></div>
+                                </header>
+                                <div class="mb-6 flex flex-col sm:flex-row justify-between items-center gap-4">
+                                    <div id="fornecedor-toggle-container" class="w-full sm:w-auto rounded-lg p-1 flex justify-center sm:justify-start gap-2"><button data-fornecedor="PEPSICO" class="fornecedor-btn bg-slate-600 hover:bg-slate-500 text-white font-bold py-2 px-4 rounded-lg flex-1 sm:flex-none">PEPSICO</button><button data-fornecedor="MULTIMARCAS" class="fornecedor-btn bg-slate-600 hover:bg-slate-500 text-white font-bold py-2 px-4 rounded-lg flex-1 sm:flex-none">MULTIMARCAS</button></div>
+                                    <div class="flex gap-2 w-full sm:w-auto"><button id="viewChartBtn" class="w-full bg-teal-600 hover:bg-teal-500 text-white font-bold py-2 px-4 rounded-lg">Ver Gráficos</button><button id="viewTableBtn" class="w-full bg-teal-600 hover:bg-teal-500 text-white font-bold py-2 px-4 rounded-lg hidden">Ver Tabela</button><button id="viewComparisonBtn" class="w-full bg-purple-600 hover:bg-purple-500 text-white font-bold py-2 px-4 rounded-lg">Ver Comparativo</button></div>
+                                </div>
+                                <div id="main-filters" class="mb-6 p-4 bg-slate-800 rounded-lg shadow-md">
+                                    <div class="grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
+                                        <div><label for="supervisor-filter" class="block mb-2 text-sm font-medium text-slate-300">Filtrar Supervisor</label><select id="supervisor-filter" class="bg-slate-700 text-sm rounded-lg block w-full p-2.5 border border-slate-600 placeholder-slate-400 text-white"><option value="">Todos</option></select></div>
+                                        <div class="relative"><label for="vendedor-filter-btn" class="block mb-2 text-sm font-medium text-slate-300">Filtrar Vendedor</label><button id="vendedor-filter-btn" class="w-full bg-slate-700 text-sm rounded-lg p-2.5 border border-slate-600 text-white text-left flex justify-between items-center"><span id="vendedor-filter-text">Todos Vendedores</span><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg></button><div id="vendedor-filter-dropdown" class="hidden absolute z-20 w-full mt-1 bg-slate-700 border border-slate-600 rounded-lg shadow-lg max-h-60 overflow-y-auto custom-scrollbar"></div></div>
+                                        <div><label for="codcli-filter" class="block mb-2 text-sm font-medium text-slate-300">Filtrar Cód. Cliente</label><input type="text" id="codcli-filter" placeholder="Digite o código..." class="bg-slate-700 text-sm rounded-lg block w-full p-2.5 border border-slate-600 placeholder-slate-400 text-white"></div>
+                                        <div><label for="posicao-filter" class="block mb-2 text-sm font-medium text-slate-300">Filtrar Posição</label><select id="posicao-filter" class="bg-slate-700 text-sm rounded-lg block w-full p-2.5 border border-slate-600 placeholder-slate-400 text-white"><option value="">Todas</option><option value="L">Liberado</option><option value="M">Montado</option><option value="F">Faturado</option></select></div>
+                                        <div><button id="clear-filters-btn" class="w-full bg-rose-600 hover:bg-rose-700 text-white font-bold py-2.5 px-4 rounded-lg">Limpar Filtros</button></div>
+                                    </div>
+                                </div>
+                                <main id="app-container">
+                                    <div id="chartView" class="hidden">
+                                        <div class="mb-6 bg-slate-800 p-4 rounded-lg"><div class="flex justify-between items-center mb-4"><div class="w-1/4"><label for="passed-working-days-input" class="block text-center text-sm font-medium text-slate-400">Dias Úteis Passados</label><input type="number" id="passed-working-days-input" class="bg-slate-700 text-sm rounded-lg block w-24 p-1.5 border border-slate-600 placeholder-slate-400 text-white text-center mx-auto"></div><div class="w-1/2 text-center"><h2 class="text-lg font-semibold text-white">Tendência de Faturamento</h2></div><div class="w-1/4"><label for="working-days-input" class="block text-center text-sm font-medium text-slate-400">Total Dias Úteis</label><input type="number" id="working-days-input" class="bg-slate-700 text-sm rounded-lg block w-24 p-1.5 border border-slate-600 placeholder-slate-400 text-white text-center mx-auto"></div></div><div id="trendChartContainer" class="relative h-80"></div></div>
+                                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6"><div class="bg-slate-800 p-4 rounded-lg"><h2 id="sales-by-person-title" class="text-lg font-semibold text-white mb-4 text-center">Vendas por Supervisor</h2><div id="salesByPersonChartContainer" class="relative h-80"></div></div><div class="bg-slate-800 p-4 rounded-lg"><h2 id="faturamentoPorFornecedorTitle" class="text-lg font-semibold text-white mb-4 text-center">Faturamento por Categoria</h2><div id="faturamentoPorFornecedorChartContainer" class="relative h-80"></div></div></div>
+                                        <div class="mt-6 bg-slate-800 p-4 rounded-lg"><div class="flex justify-between items-center mb-4"><h2 class="text-lg font-semibold text-white">Vendas por Produto</h2><div class="bg-slate-700 rounded-lg p-1 flex"><button id="faturamentoBtn" class="metric-btn active px-3 py-1 text-sm rounded-md">Faturamento</button><button id="pesoBtn" class="metric-btn px-3 py-1 text-sm rounded-md">Peso Kg</button></div></div><div id="salesByProductBarChartContainer" class="relative h-80"></div></div>
+                                        <div class="mt-6 space-y-3"><button id="show-weekly-btn" class="w-full bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-3 px-4 rounded-lg">Gráficos Semanais</button><button id="show-city-btn" class="w-full bg-cyan-600 hover:bg-cyan-700 text-white font-bold py-3 px-4 rounded-lg">Gráficos por Cidade</button></div>
+                                    </div>
+                                    <div id="tableView" class=""><div class="overflow-x-auto bg-slate-800 rounded-lg" style="max-height: 60vh;"><table class="min-w-full text-sm text-left"><thead class="text-xs text-slate-300 uppercase sticky-header"><tr><th class="px-4 py-3">Nº Pedido</th><th class="px-4 py-3">Cód. Cliente</th><th class="px-4 py-3">Vendedor</th><th class="px-4 py-3">Fornecedor</th><th class="px-4 py-3">Data Pedido</th><th class="px-4 py-3">Data Fat.</th><th class="px-4 py-3 text-right">Peso Total</th><th class="px-4 py-3 text-right">Faturamento Total</th><th class="px-4 py-3 text-center">Posição</th></tr></thead><tbody id="report-table-body" class="divide-y divide-slate-700"></tbody></table></div></div>
+                                </main>
+                            </div>
+                        </div>
+                        <div id="city-view" class="hidden container mx-auto p-4 sm:p-6 lg:p-8">
+                            <div id="city-view-loader" class="text-center p-16"><p class="text-lg text-slate-400">Carregando dados...</p></div>
+                            <div id="city-view-content" class="hidden">
+                                <div class="flex justify-between items-center mb-6"><div><h1 class="text-2xl font-bold text-white"><span style="color: #FFC000;">PRIME</span> DISTRIBUIÇÃO</h1><p class="text-lg text-slate-300 -mt-1">Análise de Vendas por Cidade</p></div><button id="back-to-main-from-city-btn" class="bg-teal-600 hover:bg-teal-500 text-white font-bold py-2 px-4 rounded-lg">Voltar ao Dashboard</button></div>
+                                <div class="mb-6 p-4 bg-slate-800 rounded-lg shadow-md"><div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 items-end"><div><label for="city-supervisor-filter" class="block mb-2 text-sm font-medium text-slate-300">Supervisor</label><select id="city-supervisor-filter" class="bg-slate-700 text-sm rounded-lg block w-full p-2.5 border border-slate-600 placeholder-slate-400 text-white"><option value="">Todos</option></select></div><div class="relative"><label for="city-vendedor-filter-btn" class="block mb-2 text-sm font-medium text-slate-300">Vendedor</label><button id="city-vendedor-filter-btn" class="w-full bg-slate-700 text-sm rounded-lg p-2.5 border border-slate-600 text-white text-left flex justify-between items-center"><span id="city-vendedor-filter-text">Todos</span><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg></button><div id="city-vendedor-filter-dropdown" class="hidden absolute z-20 w-full mt-1 bg-slate-700 border border-slate-600 rounded-lg shadow-lg max-h-60 overflow-y-auto custom-scrollbar"></div></div><div class="relative"><label for="city-name-filter" class="block mb-2 text-sm font-medium text-slate-300">Cidade</label><input type="text" id="city-name-filter" placeholder="Digite a cidade..." class="bg-slate-700 text-sm rounded-lg block w-full p-2.5 border border-slate-600 placeholder-slate-400 text-white" autocomplete="off"><div id="city-suggestions" class="absolute z-10 w-full bg-slate-700 border border-slate-600 rounded-lg mt-1 hidden max-h-48 overflow-y-auto custom-scrollbar"></div></div><div><label for="city-codcli-filter" class="block mb-2 text-sm font-medium text-slate-300">Cód. Cliente</label><input type="text" id="city-codcli-filter" placeholder="Digite o código..." class="bg-slate-700 text-sm rounded-lg block w-full p-2.5 border border-slate-600 placeholder-slate-400 text-white"></div><div><button id="clear-city-filters-btn" class="w-full bg-rose-600 hover:bg-rose-700 text-white font-bold py-2.5 px-4 rounded-lg">Limpar</button></div></div></div>
+                                <div class="grid grid-cols-1 xl:grid-cols-2 gap-6"><div class="bg-slate-800 p-4 rounded-lg"><div class="flex justify-between items-center mb-4"><div class="w-1/4"><span class="text-xl font-bold text-cyan-400">Top 10</span></div><div class="w-1/2 text-center"><h2 id="city-chart-title" class="text-lg font-semibold text-white"></h2></div><div class="w-1/4 text-right"><p class="text-slate-400 text-sm">Total Vendido</p><p id="total-faturamento-cidade" class="text-xl font-bold text-emerald-400">R$ 0,00</p></div></div><div id="salesByClientInCityChartContainer" class="relative h-96"></div></div><div class="bg-slate-800 p-4 rounded-lg"><h2 class="text-lg font-semibold text-white mb-4 text-center">Status dos Clientes</h2><div id="customerStatusChartContainer" class="relative h-96 flex items-center justify-center"></div></div></div>
+                                <div class="bg-slate-800 p-4 rounded-lg mt-6"><div class="flex justify-between items-center mb-4 px-4"><h3 class="text-lg font-semibold text-white">Clientes Ativos no Mês</h3><button id="export-active-pdf-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg text-sm">Exportar Relatório</button></div><div class="overflow-x-auto" style="max-height: 40vh;"><table class="min-w-full text-sm text-left"><thead class="text-xs text-slate-300 uppercase sticky-header"><tr><th class="px-4 py-3">Código</th><th class="px-4 py-3">Nome Fantasia</th><th class="px-4 py-3 text-right">Faturamento</th><th class="px-4 py-3">Cidade</th><th class="px-4 py-3">Bairro</th><th class="px-4 py-3">RCA 1</th><th class="px-4 py-3">RCA 2</th></tr></thead><tbody id="city-active-detail-table-body" class="divide-y divide-slate-700"></tbody></table></div></div>
+                                <div class="bg-slate-800 p-4 rounded-lg mt-6"><div class="flex justify-between items-center mb-4 px-4"><h3 class="text-lg font-semibold text-white">Clientes S/ Vendas no Mês</h3><button id="export-inactive-pdf-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg text-sm">Exportar Relatório</button></div><div class="overflow-x-auto" style="max-height: 40vh;"><table class="min-w-full text-sm text-left"><thead class="text-xs text-slate-300 uppercase sticky-header"><tr><th class="px-4 py-3">Código</th><th class="px-4 py-3">Nome Fantasia</th><th class="px-4 py-3">Cidade</th><th class="px-4 py-3">Bairro</th><th class="px-4 py-3 text-center">Última Compra</th><th class="px-4 py-3">RCA 1</th><th class="px-4 py-3">RCA 2</th></tr></thead><tbody id="city-inactive-detail-table-body" class="divide-y divide-slate-700"></tbody></table></div></div>
+                            </div>
+                        </div>
+                        <div id="weekly-view" class="hidden container mx-auto p-4 sm:p-6 lg:p-8">
+                            <div class="flex justify-between items-center mb-6"><div><h1 class="text-2xl font-bold text-white"><span style="color: #FFC000;">PRIME</span> DISTRIBUIÇÃO</h1><p class="text-lg text-slate-300 -mt-1">Acompanhamento Semanal</p></div><button id="back-to-main-from-weekly-btn" class="bg-teal-600 hover:bg-teal-500 text-white font-bold py-2 px-4 rounded-lg">Voltar ao Dashboard</button></div>
+                            <div class="mb-6 p-4 bg-slate-800 rounded-lg shadow-md"><div class="flex flex-col sm:flex-row justify-between items-center gap-4"><div id="weekly-fornecedor-toggle-container" class="w-full sm:w-auto rounded-lg p-1 flex justify-center sm:justify-start gap-2"><button data-fornecedor="PEPSICO" class="fornecedor-btn bg-slate-600 hover:bg-slate-500 text-white font-bold py-2 px-4 rounded-lg flex-1 sm:flex-none">PEPSICO</button><button data-fornecedor="MULTIMARCAS" class="fornecedor-btn bg-slate-600 hover:bg-slate-500 text-white font-bold py-2 px-4 rounded-lg flex-1 sm:flex-none">MULTIMARCAS</button></div><button id="clear-weekly-filters-btn" class="bg-rose-600 hover:bg-rose-700 text-white font-bold py-2 px-4 rounded-lg">Limpar Filtros</button></div><div class="mt-4"><label class="block text-sm font-medium text-slate-300 mb-2">Filtrar Supervisores</label><div id="weekly-supervisor-filter" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4"></div></div></div>
+                            <div class="grid grid-cols-1 gap-6"><div class="bg-slate-800 p-4 rounded-lg"><div class="flex justify-between items-center mb-4"><h2 class="text-lg font-semibold text-white text-center">Faturamento Mensal por Dia da Semana</h2><div class="text-right"><p class="text-slate-400 text-sm">Total do Mês</p><p id="total-mes-semanal" class="text-xl font-bold text-emerald-400">R$ 0,00</p></div></div><div id="weeklySalesChartContainer" class="relative h-96"></div><div class="mt-6 border-t border-slate-700 pt-4"><h3 class="text-md font-semibold text-white mb-3 text-center">Resumo de Faturamento Semanal</h3><div class="overflow-x-auto"><table class="min-w-full text-sm text-left"><thead class="text-xs text-slate-300 uppercase"><tr><th class="px-4 py-2 bg-slate-700/50 rounded-l-lg">Semana</th><th class="px-4 py-2 bg-slate-700/50 text-right rounded-r-lg">Faturamento Total</th></tr></thead><tbody id="weekly-summary-table-body" class="divide-y divide-slate-700"></tbody></table></div></div></div><div class="grid grid-cols-1 gap-6"><div class="grid grid-cols-1 lg:grid-cols-2 gap-6"><div class="bg-slate-800 p-4 rounded-lg"><h2 class="text-lg font-semibold text-white mb-4 text-center">Ranking de Positivação</h2><div id="positivacaoChartContainer" class="relative h-80"></div></div><div class="bg-slate-800 p-4 rounded-lg"><h2 class="text-lg font-semibold text-white mb-4 text-center">Ranking de Mix de Produtos (Por PDV)</h2><div id="mixChartContainer" class="relative h-80"></div></div></div><div class="bg-slate-800 p-4 rounded-lg"><h2 class="text-lg font-semibold text-white mb-4 text-center">Top 10 Vendedores (Faturamento)</h2><div id="topSellersChartContainer" class="relative h-80"></div></div></div></div>
+                        </div>
+                        <div id="comparison-view" class="hidden container mx-auto p-4 sm:p-6 lg:p-8">
+                            <div class="flex justify-between items-center mb-6"><div><h1 class="text-2xl font-bold text-white"><span style="color: #FFC000;">PRIME</span> DISTRIBUIÇÃO</h1><p class="text-lg text-slate-300 -mt-1">Comparativo entre Meses</p></div><button id="back-to-main-from-comparison-btn" class="bg-teal-600 hover:bg-teal-500 text-white font-bold py-2 px-4 rounded-lg">Voltar ao Dashboard</button></div>
+                            <div class="mb-6 p-4 bg-slate-800 rounded-lg shadow-md"><div class="grid grid-cols-1 md:grid-cols-3 gap-6 items-end"><div class="md:col-span-3 grid grid-cols-1 md:grid-cols-5 gap-4"><div><label for="comparison-supervisor-filter" class="block mb-2 text-sm font-medium text-slate-300">Supervisor</label><select id="comparison-supervisor-filter" class="bg-slate-700 text-sm rounded-lg block w-full p-2.5 border border-slate-600 placeholder-slate-400 text-white"><option value="">Todos</option></select></div><div class="relative"><label for="comparison-vendedor-filter-btn" class="block mb-2 text-sm font-medium text-slate-300">Vendedor</label><button id="comparison-vendedor-filter-btn" class="w-full bg-slate-700 text-sm rounded-lg p-2.5 border border-slate-600 text-white text-left flex justify-between items-center"><span id="comparison-vendedor-filter-text">Todos</span><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg></button><div id="comparison-vendedor-filter-dropdown" class="hidden absolute z-20 w-full mt-1 bg-slate-700 border border-slate-600 rounded-lg shadow-lg max-h-60 overflow-y-auto custom-scrollbar"></div></div><div><label class="block mb-2 text-sm font-medium text-slate-300">Pasta</label><div id="comparison-fornecedor-toggle-container" class="w-full rounded-lg p-1 flex justify-center sm:justify-start gap-2"><button data-fornecedor="PEPSICO" class="fornecedor-btn bg-slate-600 hover:bg-slate-500 text-white font-bold py-2 px-4 rounded-lg flex-1 sm:flex-none">PEPSICO</button><button data-fornecedor="MULTIMARCAS" class="fornecedor-btn bg-slate-600 hover:bg-slate-500 text-white font-bold py-2 px-4 rounded-lg flex-1 sm:flex-none">MULTIMARCAS</button></div></div>
+                                        <div class="relative">
+                                            <label for="comparison-supplier-filter-btn" class="block mb-2 text-sm font-medium text-slate-300">Fornecedor</label>
+                                            <button id="comparison-supplier-filter-btn" class="w-full bg-slate-700 text-sm rounded-lg p-2.5 border border-slate-600 text-white text-left flex justify-between items-center">
+                                                <span id="comparison-supplier-filter-text">Todos Fornecedores</span>
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                                            </button>
+                                            <div id="comparison-supplier-filter-dropdown" class="hidden absolute z-20 w-full mt-1 bg-slate-700 border border-slate-600 rounded-lg shadow-lg max-h-60 overflow-y-auto custom-scrollbar"></div>
+                                        </div>
+                                        <div class="relative"><label for="comparison-city-filter" class="block mb-2 text-sm font-medium text-slate-300">Cidade</label><input type="text" id="comparison-city-filter" placeholder="Digite a cidade..." class="bg-slate-700 text-sm rounded-lg block w-full p-2.5 border border-slate-600 placeholder-slate-400 text-white" autocomplete="off"><div id="comparison-city-suggestions" class="absolute z-10 w-full bg-slate-700 border border-slate-600 rounded-lg mt-1 hidden max-h-48 overflow-y-auto custom-scrollbar"></div></div></div><div class="md:col-span-3 grid grid-cols-1 md:grid-cols-3 gap-4 items-end border-t border-slate-700 pt-4 mt-4"><div class="flex items-end gap-4"><div><label for="comparison-passed-working-days-input" class="block text-sm font-medium text-slate-400">Dias Úteis Passados</label><input type="number" id="comparison-passed-working-days-input" class="bg-slate-700 text-sm rounded-lg block w-full p-1.5 border border-slate-600 placeholder-slate-400 text-white text-center"></div><div><label for="comparison-working-days-input" class="block text-sm font-medium text-slate-400">Total Dias Úteis</label><input type="number" id="comparison-working-days-input" class="bg-slate-700 text-sm rounded-lg block w-full p-1.5 border border-slate-600 placeholder-slate-400 text-white text-center"></div></div><button id="comparison-tendency-toggle" class="w-full bg-purple-600 hover:bg-purple-500 text-white font-bold py-2.5 px-4 rounded-lg">Calcular Tendência</button><button id="clear-comparison-filters-btn" class="w-full bg-rose-600 hover:bg-rose-700 text-white font-bold py-2.5 px-4 rounded-lg">Limpar Filtros</button></div></div></div>
+                            <div id="comparison-kpi-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6"></div>
+                            <div class="grid grid-cols-1 gap-6">
+                                <div class="bg-slate-800 p-4 rounded-lg">
+                                    <div class="flex justify-center items-center mb-4 relative">
+                                        <h2 id="comparison-chart-title" class="text-lg font-semibold text-white text-center">Comparativo de Faturamento Semanal</h2>
+                                        <div class="absolute right-0 top-0 bottom-0 flex items-center">
+                                            <div id="comparison-chart-toggle" class="flex bg-slate-700 rounded-lg p-1">
+                                                <button id="toggle-weekly-btn" class="comparison-toggle-btn active px-3 py-1 text-sm rounded-md">Semanal</button>
+                                                <button id="toggle-monthly-btn" class="comparison-toggle-btn px-3 py-1 text-sm rounded-md">Mensal</button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div id="weeklyComparisonChartContainer" class="relative h-96"></div>
+                                    <div id="monthlyComparisonChartContainer" class="relative h-96 hidden"></div>
+                                </div>
+                                <div class="bg-slate-800 p-4 rounded-lg"><h2 class="text-lg font-semibold text-white text-center mb-4">Variação de Faturamento por Supervisor</h2><div class="overflow-x-auto" style="max-height: 40vh;"><table class="min-w-full text-sm text-left"><thead class="text-xs text-slate-300 uppercase sticky-header"><tr><th class="px-4 py-3">Supervisor</th><th class="px-4 py-3 text-right">Média Trim.</th><th class="px-4 py-3 text-right">Fat. Mês Atual</th><th class="px-4 py-3 text-right">Variação</th></tr></thead><tbody id="supervisorComparisonTableBody" class="divide-y divide-slate-700"></tbody></table></div></div>
+                                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6"><div class="bg-slate-800 p-4 rounded-lg"><h2 class="text-lg font-semibold text-white text-center mb-4">Produtos com Crescimento</h2><div id="top-growth-products-table" class="overflow-x-auto" style="max-height: 40vh;"></div></div><div class="bg-slate-800 p-4 rounded-lg"><h2 class="text-lg font-semibold text-white text-center mb-4">Produtos com Queda</h2><div id="top-decline-products-table" class="overflow-x-auto" style="max-height: 40vh;"></div></div></div>
+                                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-6"><div class="bg-slate-800 p-4 rounded-lg"><h2 class="text-lg font-semibold text-white text-center mb-4">Novos - Vendidos este Mês</h2><div id="new-products-table" class="overflow-x-auto" style="max-height: 40vh;"></div></div><div class="bg-slate-800 p-4 rounded-lg"><h2 class="text-lg font-semibold text-white text-center mb-4">Perdidos - Não vendidos este Mês</h2><div id="lost-products-table" class="overflow-x-auto" style="max-height: 40vh;"></div></div></div>
+                            </div>
+                        </div>
+                        <div id="order-details-modal" class="modal-overlay hidden"><div class="bg-slate-800 rounded-lg shadow-2xl max-w-4xl w-full m-4"><div class="p-6 border-b border-slate-700 flex justify-between items-center"><h2 class="text-xl font-bold text-white">Detalhes do Pedido <span id="modal-pedido-id"></span></h2><button id="modal-close-btn" class="text-slate-400 hover:text-white text-3xl">&times;</button></div><div id="modal-header-info" class="p-6 text-left grid grid-cols-2 md:grid-cols-3 gap-4 text-sm"></div><div class="custom-scrollbar" style="max-height: 50vh; overflow-y: auto;"><table class="min-w-full text-sm text-left"><thead class="text-xs text-slate-300 uppercase sticky-header"><tr><th class="px-4 py-3">Produto</th><th class="px-4 py-3 text-right">Quantidade</th><th class="px-4 py-3 text-right">Peso (Kg)</th><th class="px-4 py-3 text-right">Valor Unitário</th></tr></thead><tbody id="modal-table-body" class="divide-y divide-slate-700"></tbody></table></div><div id="modal-footer-total" class="p-6 border-t border-slate-700 flex justify-between items-center"></div></div></div>
+                        <div id="client-details-modal" class="modal-overlay hidden"><div class="bg-slate-800 rounded-lg shadow-2xl max-w-2xl w-full m-4"><div class="p-6 border-b border-slate-700 flex justify-between items-center"><h2 class="text-xl font-bold text-white">Resumo Cadastral</h2><button id="client-modal-close-btn" class="text-slate-400 hover:text-white text-3xl">&times;</button></div><div id="client-modal-content" class="p-6"></div></div></div>
+                        <script>
+                            document.addEventListener('DOMContentLoaded', () => {
+                                // Now we load the data and then execute the logic
+                                const script = document.createElement('script');
+                                script.textContent = scriptLogic;
+                                document.body.appendChild(script);
+                            });
+                        <\/script>
+                    </body>
+                    </html>
+                `;
+
+                const blob = new Blob([reportTemplate.replace('${jsonDataString}', jsonDataString)], { type: 'text/html' });
+                downloadLink.href = URL.createObjectURL(blob);
+                const today = new Date();
+                const formattedDate = today.toISOString().slice(0, 10);
+                downloadLink.download = `DASHBOARD PRIME-${formattedDate}.html`;
+            }
+        });
+    </script>
+</body>
+</html>
