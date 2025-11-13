@@ -39,6 +39,13 @@
             flex-shrink: 0; /* Impede que os cards encolham */
         }
 
+        /* MUDANÇA: Adiciona padding lateral para garantir a centralização */
+        #product-list {
+            /* ... (código existente) ... */
+            padding-left: 5%;
+            padding-right: 5%;
+        }
+
         /* --- Estilos dos Botões de Filtro --- */
         .filter-btn {
             background-color: #fff;
@@ -288,7 +295,8 @@
 
                 // --- Cria o elemento Card ---
                 const card = document.createElement('div');
-                card.className = 'product-card relative bg-white shadow-xl rounded-xl p-6 w-[90%] sm:w-[80%] md:w-[70%] lg:w-[60%] xl:w-[50%] transition-all duration-300 hover:shadow-2xl';
+                // MUDANÇA: Aumentei a largura em ecrãs maiores (md, lg, xl) para focar num só.
+                card.className = 'product-card relative bg-white shadow-xl rounded-xl p-6 w-[90%] sm:w-[85%] md:w-[80%] lg:w-[70%] xl:w-[60%] transition-all duration-300 hover:shadow-2xl';
                 card.dataset.supplier = supplierName; // Adiciona o data-attribute para o filtro
 
                 // --- Badge do Fornecedor ---
@@ -298,7 +306,8 @@
                 
                 // --- Conteúdo do Card ---
                 const infoDiv = document.createElement('div');
-                infoDiv.className = 'flex flex-col h-full'; // Garante que o card ocupe a altura
+                // MUDANÇA: Adicionada altura mínima (min-h-[420px])
+                infoDiv.className = 'flex flex-col h-full min-h-[420px]'; // Garante altura mínima
                 
                 const codeDiv = document.createElement('div');
                 codeDiv.className = 'text-xs text-gray-400 mb-2';
@@ -310,18 +319,19 @@
 
                 const statsDiv = document.createElement('div');
                 statsDiv.className = 'grid grid-cols-3 gap-2 text-center mb-6 border-y border-gray-100 py-4';
+                // MUDANÇA: Fontes dos stats aumentadas (ainda mais)
                 statsDiv.innerHTML = `
                     <div>
-                        <span class="block text-xs text-gray-500">Estoque</span>
-                        <span class="block font-bold text-lg text-red-600">${pUnid.toFixed(0)}</span>
+                        <span class="block text-base text-gray-500">Estoque</span>
+                        <span class="block font-bold text-5xl text-red-600">${pUnid.toFixed(0)}</span>
                     </div>
                     <div>
-                        <span class="block text-xs text-gray-500">Preço (UN)</span>
-                        <span class="block font-bold text-lg text-green-600">R$${product.preco_unidade}</span>
+                        <span class="block text-base text-gray-500">Preço (UN)</span>
+                        <span class="block font-bold text-5xl text-green-600">R$${product.preco_unidade}</span>
                     </div>
                     <div>
-                        <span class="block text-xs text-gray-500">UN / Caixa</span>
-                        <span class="block font-bold text-lg text-blue-600">${Math.round(unidPorCaixa)}</span>
+                        <span class="block text-base text-gray-500">UN / Caixa</span>
+                        <span class="block font-bold text-5xl text-blue-600">${Math.round(unidPorCaixa)}</span>
                     </div>
                 `;
 
@@ -332,8 +342,10 @@
                 searchLink.target = '_blank';
                 searchLink.rel = 'noopener noreferrer';
                 // MUDANÇA: Mais cor (azul) e borda mais redonda (rounded-lg)
-                searchLink.className = 'w-full mt-auto inline-block text-center px-6 py-3 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2';
-                searchLink.innerText = 'Pesquisar Imagem Real';
+                // MUDANÇA 2: Fonte aumentada (text-base), e texto em maiúsculas (uppercase)
+                searchLink.className = 'w-full mt-auto inline-block text-center px-6 py-3 bg-blue-600 text-white text-base font-medium rounded-lg hover:bg-blue-700 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 uppercase';
+                // MUDANÇA: Texto do botão alterado
+                searchLink.innerText = 'PESQUISAR IMAGEM';
 
                 // Montar o card
                 infoDiv.appendChild(codeDiv);
