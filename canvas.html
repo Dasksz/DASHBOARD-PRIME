@@ -3,27 +3,130 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Buscador de Imagens de Produto</title>
+    <!-- Título atualizado -->
+    <title>Catálogo Interativo de Produtos</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        body { font-family: 'Inter', sans-serif; }
+        /* Usamos a fonte Inter para um visual mais limpo */
+        body { 
+            font-family: 'Inter', sans-serif; 
+            background-color: #f3f4f6; /* Um cinza de fundo mais suave */
+        }
+        
+        /* --- Estilos do Carrossel --- */
+
+        /* O container principal do carrossel */
+        #product-list {
+            /* Ativa o scroll horizontal e o "scroll snap" */
+            display: flex;
+            overflow-x: auto;
+            scroll-snap-type: x mandatory; /* Faz os cards "pararem" no lugar */
+            scroll-behavior: smooth; /* Animação de scroll suave */
+            
+            /* truque para esconder a barra de scroll */
+            -ms-overflow-style: none;  /* IE e Edge */
+            scrollbar-width: none;  /* Firefox */
+        }
+
+        /* Esconde a barra de scroll no Chrome, Safari e Opera */
+        #product-list::-webkit-scrollbar {
+            display: none;
+        }
+
+        /* Cada card do produto no carrossel */
+        .product-card {
+            scroll-snap-align: center; /* Centraliza o card no "snap" */
+            flex-shrink: 0; /* Impede que os cards encolham */
+        }
+
+        /* --- Estilos dos Botões de Filtro --- */
+        .filter-btn {
+            background-color: #fff;
+            color: #374151;
+            border: 1px solid #d1d5db;
+        }
+        
+        /* Estilo do botão de filtro ativo */
+        .filter-btn.active {
+            background-color: #2563eb; /* Azul */
+            color: #fff;
+            border-color: #2563eb;
+        }
+
+        /* Botões de navegação do carrossel */
+        .nav-btn {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            z-index: 10;
+            background-color: rgba(255, 255, 255, 0.9);
+            border-radius: 9999px;
+            width: 3rem;
+            height: 3rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            transition: all 0.2s ease-in-out;
+        }
+        .nav-btn:hover {
+            background-color: #fff;
+            transform: translateY(-50%) scale(1.05);
+        }
+        .nav-btn:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
     </style>
 </head>
-<body class="bg-gray-100">
+<body class="antialiased">
 
-    <div class="container mx-auto p-4 sm:p-6 lg:p-8 max-w-5xl">
-        <div class="bg-white shadow-md rounded-lg p-6 mb-6">
-            <h1 class="text-3xl font-bold text-gray-800">Buscador de Imagens de Produto</h1>
-            <p class="text-gray-600 mt-2">Sua lista de estoque foi carregada. Agora ela também calcula quantas unidades vêm por caixa master.</p>
-            <p id="product-count" class="text-sm font-semibold text-blue-600 mt-2"></p>
+    <!-- Header (Cabeçalho do Site) -->
+    <!-- MUDANÇA: Adicionado um gradiente subtil para mais cor -->
+    <header class="bg-gradient-to-r from-gray-800 to-gray-700 text-white shadow-lg">
+        <div class="container mx-auto max-w-7xl p-4 sm:p-6 flex justify-between items-center">
+            <h1 class="text-2xl sm:text-3xl font-bold">Catálogo Interativo</h1>
+            <p id="product-count" class="text-sm font-semibold text-gray-300"></p>
         </div>
+    </header>
 
-        <div id="product-list" class="space-y-4">
+    <!-- Barra de Filtros -->
+    <div class="bg-white shadow-md sticky top-0 z-20">
+        <div class="container mx-auto max-w-7xl p-4">
+            <label class="block text-sm font-medium text-gray-700 mb-2">Filtrar por Fornecedor:</label>
+            <!-- Os botões de filtro serão inseridos aqui pelo JS -->
+            <div id="filter-buttons" class="flex flex-wrap gap-2">
+                <!-- Ex: <button class="filter-btn active" data-supplier="Todos">Todos</button> -->
+            </div>
         </div>
     </div>
 
+    <!-- Container Principal do Carrossel -->
+    <main class="relative w-full container mx-auto max-w-7xl py-6 sm:py-10">
+        
+        <!-- Botões de Navegação -->
+        <button id="prev-btn" class="nav-btn left-2 sm:left-0" aria-label="Anterior">
+            <!-- Ícone SVG de seta para a esquerda -->
+            <svg class="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+        </button>
+        <button id="next-btn" class="nav-btn right-2 sm:right-0" aria-label="Próximo">
+            <!-- Ícone SVG de seta para a direita -->
+            <svg class="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+        </button>
+
+        <!-- O Carrossel (lista de produtos) -->
+        <div id="carousel-wrapper" class="overflow-hidden">
+            <!-- A "passadeira" que se move -->
+            <div id="product-list" class="flex p-4 gap-4 sm:gap-6">
+                <!-- Os cards dos produtos serão inseridos aqui pelo JS -->
+            </div>
+        </div>
+    </main>
+
     <script>
+        // --- Constante de Produtos (sem alterações) ---
         const products = [
+            // ... (A tua lista de produtos completa está aqui) ...
             { "codprod": "6068", "descricao": "DOCILE BALA CANUDINHO JUMBO BITE 70GR", "qt_unid": "1,0000", "preco_unidade": "4,57", "qt_master": "0,0833", "ean": "7896451926203" },
             { "codprod": "3824", "descricao": "DOCILE BALA CANUDINHO TUTTI F CITRI 70GR", "qt_unid": "2,0000", "preco_unidade": "4,57", "qt_master": "0,1667", "ean": "7896451912473" },
             { "codprod": "2816", "descricao": "DOCILE BALA DOCIGOMA SINO SORT 1KG", "qt_unid": "9,0000", "preco_unidade": "16,23", "qt_master": "0,9000", "ean": "7896451900562" },
@@ -98,7 +201,7 @@
             { "codprod": "6083", "descricao": "ITAMARATY ATREVIDOS RECH NAPOLITANO 90G", "qt_unid": "180,0000", "preco_unidade": "1,88", "qt_master": "6,0000", "ean": "7891340365286" },
             { "codprod": "6070", "descricao": "ITAMARATY LOOK STICK WAFER ATREVIDOS 55G", "qt_unid": "3,0000", "preco_unidade": "2,76", "qt_master": "0,1500", "ean": "7891340303615" },
             { "codprod": "6096", "descricao": "ITAMARATY ROSQUINHA LEITE 310G", "qt_unid": "190,0000", "preco_unidade": "3,85", "qt_master": "19,0000", "ean": "7891340330215" },
-            { "codprod": "6088", "descricao": "ITAMARATY SPANTOOO MINI CHOC BRANCO 30G", "qt_unid": "270,0000", "preco_unidade": "0,70", "qt_master": "6,0000", "ean": "7891340365453" },
+            { "codprod": "6088", "descricao": "ITAMARATY SPANTOOO MINI CHOC BRANCO 30G", "qt_unid": "270,0000", "preco_unidade": "0,70", "qt_master": "6,0000", "ean": "78964519365453" },
             { "codprod": "6089", "descricao": "ITAMARATY SPANTOOO MINI CHOCOLATE 30G", "qt_unid": "630,0000", "preco_unidade": "0,70", "qt_master": "14,0000", "ean": "7891340365439" },
             { "codprod": "6090", "descricao": "ITAMARATY SPANTOOO MINI MORANGO 30G", "qt_unid": "180,0000", "preco_unidade": "0,70", "qt_master": "4,0000", "ean": "7891340365446" },
             { "codprod": "6104", "descricao": "ITAMARATY WAFER ATREVIDOS BRIGADEIRO 80G", "qt_unid": "250,0000", "preco_unidade": "1,68", "qt_master": "5,0000", "ean": "7891340365590" },
@@ -130,91 +233,227 @@
             { "codprod": "6219", "descricao": "RANDON VINHO TINTO SUAVE VD 750 ML", "qt_unid": "12,0000", "preco_unidade": "14,68", "qt_master": "2,0000", "ean": "7896741687227" }
         ];
 
-        window.onload = function() {
-            const productList = document.getElementById('product-list');
-            const productCount = document.getElementById('product-count');
-            
-            // Limpar o array de produtos de entradas malformadas
-            const validProducts = products.filter(p => {
-                // Checagem mais robusta
-                return p && typeof p === 'object' && p.codprod && p.descricao && 
-                       !Object.keys(p).some(key => key.includes('"') || key.includes(':'));
-            });
+        // --- Variáveis Globais ---
+        const productList = document.getElementById('product-list');
+        const productCount = document.getElementById('product-count');
+        const filterContainer = document.getElementById('filter-buttons');
+        const prevButton = document.getElementById('prev-btn');
+        const nextButton = document.getElementById('next-btn');
 
-            if (validProducts.length === 0) {
-                productList.innerHTML = '<p class="text-gray-500">Nenhum produto encontrado ou dados corrompidos.</p>';
-                productCount.innerText = '0 produtos carregados';
+        // Copia "limpa" dos produtos
+        let validProducts = [];
+
+        /**
+         * Função para extrair o nome do fornecedor da descrição
+         * @param {string} descricao - A descrição do produto
+         * @returns {string} - O nome do fornecedor (ou 'Outros')
+         */
+        function getSupplier(descricao) {
+            const desc = descricao.toUpperCase();
+            if (desc.startsWith('DOCILE')) return 'DOCILE';
+            if (desc.startsWith('GSA')) return 'GSA';
+            if (desc.startsWith('ITAMARATY')) return 'ITAMARATY';
+            if (desc.startsWith('RANDON')) return 'RANDON';
+            return 'Outros'; // Fornecedor de fallback
+        }
+
+        /**
+         * Renderiza os cards dos produtos no carrossel
+         * @param {Array} productsToRender - A lista de produtos (já filtrada) a ser exibida
+         */
+        function renderProducts(productsToRender) {
+            // Limpa a lista antiga
+            productList.innerHTML = '';
+            
+            // Atualiza a contagem de produtos
+            productCount.innerText = `${productsToRender.length} produtos encontrados`;
+
+            if (productsToRender.length === 0) {
+                productList.innerHTML = `<p class="text-gray-500 p-4 w-full text-center">Nenhum produto encontrado para este fornecedor.</p>`;
+                checkScrollButtons(); // Desativa botões se não houver produtos
                 return;
             }
 
-            productCount.innerText = `${validProducts.length} produtos carregados`;
+            // Cria e adiciona cada card
+            productsToRender.forEach(product => {
+                const supplierName = getSupplier(product.descricao);
 
-            validProducts.forEach(product => {
-                // Criar o card do produto
-                const card = document.createElement('div');
-                card.className = 'bg-white shadow-sm rounded-lg p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between';
-
-                // --- Informações do produto (Atualizado) ---
-                const infoDiv = document.createElement('div');
-                infoDiv.className = 'flex-1 mb-4 sm:mb-0 sm:pr-4'; 
-                
-                const codeDiv = document.createElement('div');
-                codeDiv.className = 'flex items-center text-sm text-gray-500 mb-1';
-                codeDiv.innerHTML = `<span class="font-medium mr-4">Cód: ${product.codprod}</span> <span>EAN: ${product.ean || 'N/A'}</span>`;
-
-                const desc = document.createElement('h3');
-                desc.className = 'text-lg font-semibold text-gray-800';
-                desc.innerText = product.descricao;
-                
-                // --- Stats (Atualizado com Cálculo) ---
-                const statsDiv = document.createElement('div');
-                statsDiv.className = 'flex flex-wrap items-center text-sm text-gray-700 mt-2 gap-x-4 gap-y-1';
-                
+                // --- Cálculo dos Stats ---
                 const pUnid = parseFloat(product.qt_unid?.replace(',', '.')) || 0;
                 const pMaster = parseFloat(product.qt_master?.replace(',', '.')) || 0;
-                
                 let unidPorCaixa = 0;
                 if (pMaster > 0) {
                     unidPorCaixa = pUnid / pMaster;
                 }
 
-                const qtUnid = document.createElement('p');
-                qtUnid.innerHTML = `Estoque: <span class="font-bold text-red-600">${pUnid.toFixed(0)} UN</span>`;
-                
-                const preco = document.createElement('p');
-                preco.innerHTML = `Preço: <span class="font-bold text-green-600">R$ ${product.preco_unidade}</span>`;
-                
-                // Nova informação
-                const porCaixa = document.createElement('p');
-                // Arredondar para o inteiro mais próximo
-                porCaixa.innerHTML = `Por Caixa: <span class="font-bold text-blue-600">${Math.round(unidPorCaixa)} UN</span>`;
+                // --- Cria o elemento Card ---
+                const card = document.createElement('div');
+                card.className = 'product-card relative bg-white shadow-xl rounded-xl p-6 w-[90%] sm:w-[80%] md:w-[70%] lg:w-[60%] xl:w-[50%] transition-all duration-300 hover:shadow-2xl';
+                card.dataset.supplier = supplierName; // Adiciona o data-attribute para o filtro
 
-                statsDiv.appendChild(qtUnid);
-                statsDiv.appendChild(preco);
-                statsDiv.appendChild(porCaixa); // Adicionado
+                // --- Badge do Fornecedor ---
+                const badge = document.createElement('span');
+                badge.className = 'absolute top-4 right-4 bg-indigo-100 text-indigo-800 text-xs font-semibold px-2.5 py-0.5 rounded-full';
+                badge.innerText = supplierName;
+                
+                // --- Conteúdo do Card ---
+                const infoDiv = document.createElement('div');
+                infoDiv.className = 'flex flex-col h-full'; // Garante que o card ocupe a altura
+                
+                const codeDiv = document.createElement('div');
+                codeDiv.className = 'text-xs text-gray-400 mb-2';
+                codeDiv.innerHTML = `Cód: ${product.codprod} | EAN: ${product.ean || 'N/A'}`;
 
+                const desc = document.createElement('h3');
+                desc.className = 'text-xl font-bold text-gray-900 mb-4 flex-grow'; // flex-grow faz a descrição empurrar o resto para baixo
+                desc.innerText = product.descricao;
+
+                const statsDiv = document.createElement('div');
+                statsDiv.className = 'grid grid-cols-3 gap-2 text-center mb-6 border-y border-gray-100 py-4';
+                statsDiv.innerHTML = `
+                    <div>
+                        <span class="block text-xs text-gray-500">Estoque</span>
+                        <span class="block font-bold text-lg text-red-600">${pUnid.toFixed(0)}</span>
+                    </div>
+                    <div>
+                        <span class="block text-xs text-gray-500">Preço (UN)</span>
+                        <span class="block font-bold text-lg text-green-600">R$${product.preco_unidade}</span>
+                    </div>
+                    <div>
+                        <span class="block text-xs text-gray-500">UN / Caixa</span>
+                        <span class="block font-bold text-lg text-blue-600">${Math.round(unidPorCaixa)}</span>
+                    </div>
+                `;
+
+                // --- Botão de Pesquisar (Ação Principal) ---
+                const searchLink = document.createElement('a');
+                const searchQuery = encodeURIComponent(`${product.descricao} ${product.ean || ''}`);
+                searchLink.href = `https://www.google.com/search?tbm=isch&q=${searchQuery}`;
+                searchLink.target = '_blank';
+                searchLink.rel = 'noopener noreferrer';
+                // MUDANÇA: Mais cor (azul) e borda mais redonda (rounded-lg)
+                searchLink.className = 'w-full mt-auto inline-block text-center px-6 py-3 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2';
+                searchLink.innerText = 'Pesquisar Imagem Real';
+
+                // Montar o card
                 infoDiv.appendChild(codeDiv);
                 infoDiv.appendChild(desc);
                 infoDiv.appendChild(statsDiv);
-                // --- Fim das Informações ---
-
-
-                // Botão de busca
-                const buttonLink = document.createElement('a');
-                
-                const searchQuery = encodeURIComponent(`${product.descricao} ${product.ean || ''}`);
-                buttonLink.href = `https://www.google.com/search?tbm=isch&q=${searchQuery}`;
-                buttonLink.target = '_blank';
-                buttonLink.rel = 'noopener noreferrer';
-                buttonLink.className = 'w-full mt-3 sm:mt-0 sm:w-auto flex-shrink-0 inline-block px-5 py-3 bg-blue-600 text-white text-sm font-medium rounded-md text-center hover:bg-blue-700 transition-colors duration-200';
-                buttonLink.innerText = 'Buscar Imagem';
-
-                // Montar o card
+                infoDiv.appendChild(searchLink);
+                card.appendChild(badge);
                 card.appendChild(infoDiv);
-                card.appendChild(buttonLink);
                 
                 productList.appendChild(card);
             });
+
+            // Atualiza o estado dos botões de scroll
+            checkScrollButtons();
+        }
+
+        /**
+         * Filtra os produtos e renderiza a lista novamente
+         * @param {string} supplier - O fornecedor para filtrar (ou 'Todos')
+         */
+        function filterProducts(supplier) {
+            // Atualiza os botões ativos
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.supplier === supplier);
+            });
+
+            // Reseta o scroll antes de filtrar
+            productList.scrollTo({ left: 0, behavior: 'auto' });
+            
+            const productsToRender = (supplier === 'Todos')
+                ? validProducts
+                : validProducts.filter(p => getSupplier(p.descricao) === supplier);
+            
+            renderProducts(productsToRender);
+        }
+
+        /**
+         * Verifica se os botões de Próximo/Anterior devem estar ativos
+         */
+        function checkScrollButtons() {
+            // Atraso pequeno para o navegador calcular o scrollWidth
+            setTimeout(() => {
+                const maxScroll = productList.scrollWidth - productList.clientWidth;
+                prevButton.disabled = productList.scrollLeft <= 0;
+                nextButton.disabled = productList.scrollLeft >= maxScroll - 2; // -2 de margem de erro
+            }, 100);
+        }
+
+        // --- Evento principal (quando a página carrega) ---
+        window.onload = function() {
+            // 1. Limpa e valida os produtos
+            validProducts = products.filter(p => 
+                p && typeof p === 'object' && p.codprod && p.descricao && 
+                !Object.keys(p).some(key => key.includes('"') || key.includes(':'))
+            );
+
+            // 2. MUDANÇA: Organiza os produtos ANTES de criar os filtros
+            validProducts.sort((a, b) => {
+                const supplierA = getSupplier(a.descricao);
+                const supplierB = getSupplier(b.descricao);
+                
+                const descA = a.descricao.toUpperCase();
+                const descB = b.descricao.toUpperCase();
+
+                const estoqueA = parseFloat(a.qt_unid?.replace(',', '.')) || 0;
+                const estoqueB = parseFloat(b.qt_unid?.replace(',', '.')) || 0;
+
+                // Nível 1: Ordem alfabética (descrição)
+                if (descA < descB) return -1;
+                if (descA > descB) return 1;
+
+                // Nível 2: Fornecedor (se descrição for igual)
+                if (supplierA < supplierB) return -1;
+                if (supplierA > supplierB) return 1;
+
+                // Nível 3: Estoque (do maior para o menor)
+                return estoqueB - estoqueA; // b - a para descendente
+            });
+
+
+            // 3. Cria os botões de filtro dinamicamente
+            const suppliers = ['Todos', ...new Set(validProducts.map(p => getSupplier(p.descricao)))];
+            suppliers.sort(); // Ordena alfabeticamente (exceto 'Todos')
+
+            suppliers.forEach((supplier, index) => {
+                const button = document.createElement('button');
+                // MUDANÇA: Bordas mais redondas (rounded-xl)
+                button.className = 'filter-btn px-4 py-2 text-sm font-medium rounded-xl transition-all duration-200';
+                if (supplier === 'Todos') {
+                    button.classList.add('active'); // 'Todos' é o padrão
+                }
+                button.dataset.supplier = supplier;
+                button.innerText = supplier;
+                
+                // Adiciona o evento de clique para filtrar
+                button.onclick = () => {
+                    filterProducts(supplier);
+                };
+                filterContainer.appendChild(button);
+            });
+
+            // 4. Renderiza os produtos pela primeira vez (agora ordenados)
+            renderProducts(validProducts);
+
+            // 5. Adiciona eventos aos botões de navegação do carrossel
+            nextButton.onclick = () => {
+                // Rola o equivalente a 80% da largura visível
+                const scrollAmount = productList.clientWidth * 0.8;
+                productList.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+            };
+
+            prevButton.onclick = () => {
+                const scrollAmount = productList.clientWidth * 0.8;
+                productList.scrollBy({ left: -scrollAmount, behavior: 'smooth' });
+            };
+
+            // 5. Atualiza os botões de navegação sempre que o scroll terminar
+            productList.addEventListener('scroll', checkScrollButtons);
+            // E também quando a janela muda de tamanho
+            window.addEventListener('resize', checkScrollButtons);
         }
     </script>
 </body>
