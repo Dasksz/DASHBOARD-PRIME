@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Buscador de Imagens de Produto</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+    </style>
+</head>
+<body class="bg-gray-100">
+
+    <div class="container mx-auto p-4 sm:p-6 lg:p-8 max-w-5xl">
+        <div class="bg-white shadow-md rounded-lg p-6 mb-6">
+            <h1 class="text-3xl font-bold text-gray-800">Buscador de Imagens de Produto</h1>
+            <p class="text-gray-600 mt-2">Sua lista de estoque foi carregada. Agora ela também calcula quantas unidades vêm por caixa master.</p>
+            <p id="product-count" class="text-sm font-semibold text-blue-600 mt-2"></p>
+        </div>
+
+        <div id="product-list" class="space-y-4">
+        </div>
+    </div>
+
+    <script>
+        const products = [
+            { "codprod": "6068", "descricao": "DOCILE BALA CANUDINHO JUMBO BITE 70GR", "qt_unid": "1,0000", "preco_unidade": "4,57", "qt_master": "0,0833", "ean": "7896451926203" },
+            { "codprod": "3824", "descricao": "DOCILE BALA CANUDINHO TUTTI F CITRI 70GR", "qt_unid": "2,0000", "preco_unidade": "4,57", "qt_master": "0,1667", "ean": "7896451912473" },
+            { "codprod": "2816", "descricao": "DOCILE BALA DOCIGOMA SINO SORT 1KG", "qt_unid": "9,0000", "preco_unidade": "16,23", "qt_master": "0,9000", "ean": "7896451900562" },
+            { "codprod": "2466", "descricao": "DOCILE BALA GELATINES BEIJO 70GR", "qt_unid": "3,0000", "preco_unidade": "4,57", "qt_master": "0,2500", "ean": "7896451909381" },
+            { "codprod": "4402", "descricao": "DOCILE BALA GELATINES MIX FRUTAS NAT 70G", "qt_unid": "1,0000", "preco_unidade": "4,57", "qt_master": "0,0833", "ean": "7896451914620" },
+            { "codprod": "4237", "descricao": "DOCILE BALA GELATINNES BANANA 1KG", "qt_unid": "7,0000", "preco_unidade": "36,25", "qt_master": "0,5833", "ean": "7896451910424" },
+            { "codprod": "4235", "descricao": "DOCILE BALA GOMA TUBO SORT 14GR C/5", "qt_unid": "70,0000", "preco_unidade": "13,62", "qt_master": "3,3333", "ean": "7896451911919" },
+            { "codprod": "5992", "descricao": "DOCILE BIG CANUD DINO COL F AZE 24 X 26G", "qt_unid": "32,0000", "preco_unidade": "35,20", "qt_master": "5,3333", "ean": "7896451925589" },
+            { "codprod": "3838", "descricao": "DOCILE CANUD COL MOR CITR UNI 12 PC 15G", "qt_unid": "1,0000", "preco_unidade": "11,32", "qt_master": "0,0833", "ean": "7896451913593" },
+            { "codprod": "3830", "descricao": "DOCILE CANUD COLOR MOR CITRIC 12PC 15G", "qt_unid": "2,0000", "preco_unidade": "11,32", "qt_master": "0,1667", "ean": "7896451913081" },
+            { "codprod": "3834", "descricao": "DOCILE CANUDINHO GREGO DP 12PC DE 15G", "qt_unid": "16,0000", "preco_unidade": "11,32", "qt_master": "1,3333", "ean": "7896451914576" },
+            { "codprod": "3832", "descricao": "DOCILE CANUDINHO MORANGO DP 12PC DE 15G", "qt_unid": "9,0000", "preco_unidade": "11,32", "qt_master": "0,7500", "ean": "7896451912817" },
+            { "codprod": "5407", "descricao": "DOCILE CANUDINHO VASS DE BRUXA 12PC 15G", "qt_unid": "89,0000", "preco_unidade": "11,32", "qt_master": "7,4167", "ean": "7896451923479" },
+            { "codprod": "2510", "descricao": "DOCILE CHICLE PASTICLE TUTTI FRUTI 240G", "qt_unid": "7,0000", "preco_unidade": "11,63", "qt_master": "0,2917", "ean": "7896451907103" },
+            { "codprod": "5988", "descricao": "DOCILE DOCIGOMA EM FORMATO PICOLE 190G", "qt_unid": "172,0000", "preco_unidade": "3,98", "qt_master": "4,7778", "ean": "7896451925534" },
+            { "codprod": "6208", "descricao": "DOCILE DOCIGOMA FORMATO MIX AZE SM 90GR", "qt_unid": "236,0000", "preco_unidade": "2,86", "qt_master": "7,8667", "ean": "7896451928184" },
+            { "codprod": "4931", "descricao": "DOCILE DOCIGOMA MINHOC AZEDI 900G", "qt_unid": "29,0000", "preco_unidade": "15,62", "qt_master": "2,9000", "ean": "7896451916037" },
+            { "codprod": "4234", "descricao": "DOCILE DOCIGOMA MINI SINO SORT 18G", "qt_unid": "1,0000", "preco_unidade": "18,02", "qt_master": "0,0833", "ean": "7896451918604" },
+            { "codprod": "6065", "descricao": "DOCILE DOCIGOMA MIX SUPER AZE 12 PC 15G", "qt_unid": "5,0000", "preco_unidade": "10,57", "qt_master": "0,4167", "ean": "7896451926166" },
+            { "codprod": "2488", "descricao": "DOCILE DOCIGOMA TUBO GURT 30GR C/30", "qt_unid": "28,0000", "preco_unidade": "23,45", "qt_master": "2,3333", "ean": "7896451911704" },
+            { "codprod": "6217", "descricao": "DOCILE DROPS ROLLY MINT CEREJA 29G C/12", "qt_unid": "60,0000", "preco_unidade": "12,10", "qt_master": "2,0000", "ean": "7896451929365" },
+            { "codprod": "2568", "descricao": "DOCILE DROPS ROLLY MINT EXT FORT 29GC/16", "qt_unid": "21,0000", "preco_unidade": "15,31", "qt_master": "0,8750", "ean": "7896451907196" },
+            { "codprod": "2569", "descricao": "DOCILE DROPS ROLLY MINT FRUIT 29GR C/16", "qt_unid": "22,0000", "preco_unidade": "15,31", "qt_master": "0,9167", "ean": "7896451907677" },
+            { "codprod": "2572", "descricao": "DOCILE DROPS ROLLY MINT MORANGO 29G C/16", "qt_unid": "5,0000", "preco_unidade": "15,31", "qt_master": "0,2083", "ean": "7896451907202" },
+            { "codprod": "5253", "descricao": "DOCILE GELATINA MIX 1KG", "qt_unid": "8,0000", "preco_unidade": "36,25", "qt_master": "0,6667", "ean": "7896451922694" },
+            { "codprod": "4248", "descricao": "DOCILE GELATINES BEIJO INST 1KG", "qt_unid": "6,0000", "preco_unidade": "36,25", "qt_master": "0,6000", "ean": "7896451910547" },
+            { "codprod": "4245", "descricao": "DOCILE GELATINES MINI AMORAS 15G", "qt_unid": "5,0000", "preco_unidade": "11,32", "qt_master": "0,4167", "ean": "7896451912947" },
+            { "codprod": "6113", "descricao": "DOCILE GELATINES MINI AMORAS HALLOW 15G", "qt_unid": "187,0000", "preco_unidade": "11,32", "qt_master": "15,5833", "ean": "7896451926692" },
+            { "codprod": "3836", "descricao": "DOCILE GELATINES MINI BEIJO 15G", "qt_unid": "99,0000", "preco_unidade": "11,32", "qt_master": "8,2500", "ean": "7896451912930" },
+            { "codprod": "5991", "descricao": "DOCILE GOMA DE MASCAR TUTTI SORT 250G", "qt_unid": "112,0000", "preco_unidade": "14,20", "qt_master": "5,6000", "ean": "7896451922496" },
+            { "codprod": "5148", "descricao": "DOCILE MAXMAL RECH TWI COL BAU/MORA 135G", "qt_unid": "1,0000", "preco_unidade": "6,06", "qt_master": "0,0500", "ean": "7896451922212" },
+            { "codprod": "5251", "descricao": "DOCILE MAXMALLOW TUBO BRANCO ASSAR 150G", "qt_unid": "7,0000", "preco_unidade": "6,06", "qt_master": "0,3500", "ean": "7896451922687" },
+            { "codprod": "4787", "descricao": "DOCILE MAXMALLOW TWIST COLOR UNI 15G", "qt_unid": "28,0000", "preco_unidade": "1,67", "qt_master": "1,1667", "ean": "7896451913890" },
+            { "codprod": "5146", "descricao": "DOCILE MAXMALLOWS PIPOCA 150GR", "qt_unid": "34,0000", "preco_unidade": "6,06", "qt_master": "1,7000", "ean": "7896451922489" },
+            { "codprod": "6211", "descricao": "DOCILE MAXMALLOWS PISTACHE 150GR", "qt_unid": "174,0000", "preco_unidade": "6,06", "qt_master": "8,7000", "ean": "7896451928221" },
+            { "codprod": "2819", "descricao": "DOCILE MAXMALLOWS TWIST AZUL/BRANCO 250G", "qt_unid": "15,0000", "preco_unidade": "10,26", "qt_master": "1,2500", "ean": "7896451910202" },
+            { "codprod": "2710", "descricao": "DOCILE MAXMALLOWS TWIST COLOR 1 BAUN 50G", "qt_unid": "44,0000", "preco_unidade": "4,57", "qt_master": "3,6667", "ean": "7896451909213" },
+            { "codprod": "3799", "descricao": "DOCILE MINI SINO EUCALIPTO DP C/24 18G", "qt_unid": "98,0000", "preco_unidade": "18,02", "qt_master": "8,1667", "ean": "7896451918598" },
+            { "codprod": "4710", "descricao": "DOCILE MINTY MORANGO AZED S ACUCAR 21G", "qt_unid": "3,0000", "preco_unidade": "58,18", "qt_master": "0,5000", "ean": "7896451918055" },
+            { "codprod": "3810", "descricao": "DOCILE TANDY REFRESCO ABACAXI 25G", "qt_unid": "57,0000", "preco_unidade": "10,72", "qt_master": "7,1250", "ean": "7896451904843" },
+            { "codprod": "3820", "descricao": "DOCILE TANDY REFRESCO LARANJA 25G", "qt_unid": "1,0000", "preco_unidade": "10,72", "qt_master": "0,1250", "ean": "7896457904904" },
+            { "codprod": "3808", "descricao": "DOCILE TANDY REFRESCO MARACUJA 25G", "qt_unid": "1,0000", "preco_unidade": "10,72", "qt_master": "0,1250", "ean": "7896451904881" },
+            { "codprod": "3809", "descricao": "DOCILE TANDY REFRESCO MORANGO 25G", "qt_unid": "1,0000", "preco_unidade": "10,72", "qt_master": "0,1250", "ean": "7896451904874" },
+            { "codprod": "3812", "descricao": "DOCILE TANDY REFRESCO TANGERINA 25G", "qt_unid": "1,0000", "preco_unidade": "10,72", "qt_master": "0,1250", "ean": "7896451904867" },
+            { "codprod": "3813", "descricao": "DOCILE TANDY REFRESCO UVA 25G", "qt_unid": "2,0000", "preco_unidade": "10,72", "qt_master": "0,2500", "ean": "7896451904898" },
+            { "codprod": "3816", "descricao": "DOCILE TANDY REFRESCOSALADA DE FRUTA 25G", "qt_unid": "4,0000", "preco_unidade": "10,72", "qt_master": "0,5000", "ean": "7896451908841" },
+            { "codprod": "3877", "descricao": "GSA REFRESKANT DISPLAY GOIABA 25G", "qt_unid": "10,0000", "preco_unidade": "12,37", "qt_master": "1,0000", "ean": "7896071019339" },
+            { "codprod": "5847", "descricao": "GSA REFRESKANT LARANJA DOCINHA 20G C/15", "qt_unid": "3,0000", "preco_unidade": "12,37", "qt_master": "0,3000", "ean": "7898933733903" },
+            { "codprod": "5848", "descricao": "GSA SANDELLA MISTURA BOLO BAUNILHA 350G", "qt_unid": "195,0000", "preco_unidade": "4,43", "qt_master": "16,2500", "ean": "7896071018739" },
+            { "codprod": "5189", "descricao": "GSA SANDELLA MISTURA BOLO CHOCOLATE 350G", "qt_unid": "86,0000", "preco_unidade": "4,43", "qt_master": "7,1667", "ean": "7896071018612" },
+            { "codprod": "5190", "descricao": "GSA SANDELLA MISTURA BOLO COCO 350G", "qt_unid": "135,0000", "preco_unidade": "4,43", "qt_master": "11,2500", "ean": "7896071010000" },
+            { "codprod": "5849", "descricao": "GSA SANDELLA MISTURA BOLO LARANJA 350G", "qt_unid": "20,0000", "preco_unidade": "4,43", "qt_master": "1,6667", "ean": "7896071018661" },
+            { "codprod": "2719", "descricao": "GSA SANDELLA MISTURA P/ BOLO BRIGAD 350G", "qt_unid": "140,0000", "preco_unidade": "4,43", "qt_master": "11,6667", "ean": "7898514352554" },
+            { "codprod": "2719", "descricao": "GSA SANDELLA MISTURA P/ BOLO FESTA 350G", "qt_unid": "161,0000", "preco_unidade": "4,43", "qt_master": "13,4167", "ean": "7896071018746" },
+            { "codprod": "2724", "descricao": "GSA SANDELLA MISTURA P/ BOLO MILH V 350G", "qt_unid": "154,0000", "preco_unidade": "4,43", "qt_master": "12,8333", "ean": "7896071018777" },
+            { "codprod": "3906", "descricao": "GSA SANDELLA SOPAO CALABRESA PI 90G", "qt_unid": "1,0000", "preco_unidade": "3,69", "qt_master": "0,0833", "ean": "7896225700596" },
+            { "codprod": "4194", "descricao": "GSA SANDELLA SOPAO CARNE C LEGUMES 90G", "qt_unid": "60,0000", "preco_unidade": "2,99", "qt_master": "5,0000", "ean": "7898514352073" },
+            { "codprod": "2791", "descricao": "GSA SANDELLA SOPAO CARNE/LEGUMES 180GR", "qt_unid": "211,0000", "preco_unidade": "4,97", "qt_master": "8,7917", "ean": "7898514350130" },
+            { "codprod": "2792", "descricao": "GSA SANDELLA SOPAO GAL CAIPIRA/LEG 180GR", "qt_unid": "230,0000", "preco_unidade": "4,97", "qt_master": "9,5833", "ean": "7898514350123" },
+            { "codprod": "2794", "descricao": "GSA SANDELLA TEMPERO COMPL ALHO/SAL 300G", "qt_unid": "30,0000", "preco_unidade": "2,54", "qt_master": "1,2500", "ean": "7896071018364" },
+            { "codprod": "2795", "descricao": "GSA SANDELLA TEMPERO COMPL C/PIMENT 300G", "qt_unid": "33,0000", "preco_unidade": "2,54", "qt_master": "1,3750", "ean": "7896071018401" },
+            { "codprod": "2796", "descricao": "GSA SANDELLA TEMPERO COMPL S/PIMENT 300G", "qt_unid": "76,0000", "preco_unidade": "2,54", "qt_master": "3,1667", "ean": "7896071018388" },
+            { "codprod": "2797", "descricao": "GSA SANDELLA TEMPERO EM PO AVES 50G", "qt_unid": "1,0000", "preco_unidade": "2,59", "qt_master": "0,0208", "ean": "7896071018043" },
+            { "codprod": "6230", "descricao": "GSA SANDELLA TEMPERO EM PO AVES 50G", "qt_unid": "203,0000", "preco_unidade": "2,59", "qt_master": "4,2292", "ean": "7896225743227" },
+            { "codprod": "2798", "descricao": "GSA SANDELLA TEMPERO EM PO CARNE 50G", "qt_unid": "2,0000", "preco_unidade": "2,59", "qt_master": "0,0417", "ean": "7896071018104" },
+            { "codprod": "6231", "descricao": "GSA SANDELLA TEMPERO EM PO CARNE 50G", "qt_unid": "68,0000", "preco_unidade": "2,59", "qt_master": "1,4167", "ean": "7896225743234" },
+            { "codprod": "6232", "descricao": "GSA SANDELLA TEMPERO EM PO FEIJAO 50G", "qt_unid": "222,0000", "preco_unidade": "2,59", "qt_master": "4,6250", "ean": "7896225743258" },
+            { "codprod": "2799", "descricao": "GSA SANDELLA TEMPERO EM PO FEIJAO 50G", "qt_unid": "576,0000", "preco_unidade": "2,59", "qt_master": "12,0000", "ean": "7896071018081" },
+            { "codprod": "2800", "descricao": "GSA SANDELLA TEMPERO EM PO LEGUMES 50G", "qt_unid": "483,0000", "preco_unidade": "2,59", "qt_master": "10,0625", "ean": "7896071018166" },
+            { "codprod": "6084", "descricao": "ITAMARATY ATREVIDOS RECH BRIGADEIRO 90G", "qt_unid": "30,0000", "preco_unidade": "1,88", "qt_master": "1,0000", "ean": "7891340365262" },
+            { "codprod": "6082", "descricao": "ITAMARATY ATREVIDOS RECH CHOC BRANCO 90G", "qt_unid": "60,0000", "preco_unidade": "1,88", "qt_master": "2,0000", "ean": "7891340365279" },
+            { "codprod": "6083", "descricao": "ITAMARATY ATREVIDOS RECH NAPOLITANO 90G", "qt_unid": "180,0000", "preco_unidade": "1,88", "qt_master": "6,0000", "ean": "7891340365286" },
+            { "codprod": "6070", "descricao": "ITAMARATY LOOK STICK WAFER ATREVIDOS 55G", "qt_unid": "3,0000", "preco_unidade": "2,76", "qt_master": "0,1500", "ean": "7891340303615" },
+            { "codprod": "6096", "descricao": "ITAMARATY ROSQUINHA LEITE 310G", "qt_unid": "190,0000", "preco_unidade": "3,85", "qt_master": "19,0000", "ean": "7891340330215" },
+            { "codprod": "6088", "descricao": "ITAMARATY SPANTOOO MINI CHOC BRANCO 30G", "qt_unid": "270,0000", "preco_unidade": "0,70", "qt_master": "6,0000", "ean": "7891340365453" },
+            { "codprod": "6089", "descricao": "ITAMARATY SPANTOOO MINI CHOCOLATE 30G", "qt_unid": "630,0000", "preco_unidade": "0,70", "qt_master": "14,0000", "ean": "7891340365439" },
+            { "codprod": "6090", "descricao": "ITAMARATY SPANTOOO MINI MORANGO 30G", "qt_unid": "180,0000", "preco_unidade": "0,70", "qt_master": "4,0000", "ean": "7891340365446" },
+            { "codprod": "6104", "descricao": "ITAMARATY WAFER ATREVIDOS BRIGADEIRO 80G", "qt_unid": "250,0000", "preco_unidade": "1,68", "qt_master": "5,0000", "ean": "7891340365590" },
+            { "codprod": "6105", "descricao": "ITAMARATY WAFER ATREVIDOS CHOC BRANC 80G", "qt_unid": "400,0000", "preco_unidade": "1,68", "qt_master": "8,0000", "ean": "7891340365606" },
+            { "codprod": "6103", "descricao": "ITAMARATY WAFER ATREVIDOS NAPOLITANO 80G", "qt_unid": "450,0000", "preco_unidade": "1,68", "qt_master": "9,0000", "ean": "7891340365583" },
+            { "codprod": "6212", "descricao": "RANDON HITS POWER MACA VERDE LT 473ML", "qt_unid": "24,0000", "preco_unidade": "4,99", "qt_master": "2,0000", "ean": "7898126631542" },
+            { "codprod": "6135", "descricao": "RANDON TIKITO ABACAXI C/ HORTELA 450 ML", "qt_unid": "372,0000", "preco_unidade": "2,08", "qt_master": "31,0000", "ean": "7898126631726" },
+            { "codprod": "6158", "descricao": "RANDON ESPUMANTE MOSCATEL 750ML", "qt_unid": "32,0000", "preco_unidade": "29,77", "qt_master": "5,3333", "ean": "7896741686909" },
+            { "codprod": "6159", "descricao": "RANDON ESPUMANTE MOSCATEL ROSE 750ML", "qt_unid": "26,0000", "preco_unidade": "28,35", "qt_master": "4,3333", "ean": "7896741693211" },
+            { "codprod": "6157", "descricao": "RANDON ESPUMANTE NIAGARA 750ML", "qt_unid": "42,0000", "preco_unidade": "28,35", "qt_master": "7,0000", "ean": "7896741687623" },
+            { "codprod": "6142", "descricao": "RANDON SIDRA GOTAS DO VALE MACA VD 660ML", "qt_unid": "231,0000", "preco_unidade": "9,36", "qt_master": "19,2500", "ean": "7896741687005" },
+            { "codprod": "6203", "descricao": "RANDON STEMPEL BLACK VD 600ML", "qt_unid": "240,0000", "preco_unidade": "9,01", "qt_master": "40,0000", "ean": "7896741693822" },
+            { "codprod": "6146", "descricao": "RANDON STEMPEL PINEAPPLE VD 355ML", "qt_unid": "144,0000", "preco_unidade": "5,46", "qt_master": "24,0000", "ean": "7896741650498" },
+            { "codprod": "6148", "descricao": "RANDON STEMPEL PINK VD 355ML", "qt_unid": "132,0000", "preco_unidade": "5,46", "qt_master": "22,0000", "ean": "7896741650511" },
+            { "codprod": "6150", "descricao": "RANDON STEMPEL PINK VD 600ML", "qt_unid": "222,0000", "preco_unidade": "9,01", "qt_master": "37,0000", "ean": "7896741650504" },
+            { "codprod": "6149", "descricao": "RANDON STEMPEL RED VD 355ML", "qt_unid": "162,0000", "preco_unidade": "5,46", "qt_master": "13,5000", "ean": "7896741650528" },
+            { "codprod": "6153", "descricao": "RANDON STEMPEL RED VD 600ML", "qt_unid": "162,0000", "preco_unidade": "9,01", "qt_master": "27,0000", "ean": "7896741650429" },
+            { "codprod": "6147", "descricao": "RANDON STEMPEL WHITE VD 355ML", "qt_unid": "6,0000", "preco_unidade": "5,46", "qt_master": "1,0000", "ean": "7896741650535" },
+            { "codprod": "6152", "descricao": "RANDON STEMPEL WHITE VD 600ML", "qt_unid": "210,0000", "preco_unidade": "9,01", "qt_master": "35,0000", "ean": "7896741650474" },
+            { "codprod": "6151", "descricao": "RANDON STEMPELPINEAPPLE VD 600ML", "qt_unid": "168,0000", "preco_unidade": "9,01", "qt_master": "28,0000", "ean": "7896741650481" },
+            { "codprod": "6155", "descricao": "RANDON VINHO BCO SECO MOSC GIALLO 750ML", "qt_unid": "36,0000", "preco_unidade": "20,68", "qt_master": "6,0000", "ean": "7896741683908" },
+            { "codprod": "6160", "descricao": "RANDON VINHO FRISANTE GAS ROSE SUAVE 750", "qt_unid": "30,0000", "preco_unidade": "17,87", "qt_master": "5,0000", "ean": "7896741693594" },
+            { "codprod": "6156", "descricao": "RANDON VINHO TINTO SECO CABERNET SAV 750", "qt_unid": "44,0000", "preco_unidade": "20,68", "qt_master": "7,3333", "ean": "7896741649362" },
+            { "codprod": "6154", "descricao": "RANDON VINHO TINTO SECO FIN MERLOT 750ML", "qt_unid": "43,0000", "preco_unidade": "20,68", "qt_master": "7,1667", "ean": "7896741683700" },
+            { "codprod": "6161", "descricao": "RANDON VINHO TINTO SUAV BORDO 1500ML PET", "qt_unid": "306,0000", "preco_unidade": "15,72", "qt_master": "51,0000", "ean": "7896741693082" },
+            { "codprod": "6222", "descricao": "RANDON VINHO TINTO SUAVE  VD 1L", "qt_unid": "228,0000", "preco_unidade": "17,49", "qt_master": "19,0000", "ean": "7896741687647" },
+            { "codprod": "6221", "descricao": "RANDON VINHO TINTO SUAVE BORDO VD 1L", "qt_unid": "228,0000", "preco_unidade": "18,36", "qt_master": "19,0000", "ean": "7896741693096" },
+            { "codprod": "6220", "descricao": "RANDON VINHO TINTO SUAVE BORDO VD 750 ML", "qt_unid": "114,0000", "preco_unidade": "15,39", "qt_master": "19,0000", "ean": "7896741687685" },
+            { "codprod": "6219", "descricao": "RANDON VINHO TINTO SUAVE VD 750 ML", "qt_unid": "12,0000", "preco_unidade": "14,68", "qt_master": "2,0000", "ean": "7896741687227" }
+        ];
+
+        window.onload = function() {
+            const productList = document.getElementById('product-list');
+            const productCount = document.getElementById('product-count');
+            
+            // Limpar o array de produtos de entradas malformadas
+            const validProducts = products.filter(p => {
+                // Checagem mais robusta
+                return p && typeof p === 'object' && p.codprod && p.descricao && 
+                       !Object.keys(p).some(key => key.includes('"') || key.includes(':'));
+            });
+
+            if (validProducts.length === 0) {
+                productList.innerHTML = '<p class="text-gray-500">Nenhum produto encontrado ou dados corrompidos.</p>';
+                productCount.innerText = '0 produtos carregados';
+                return;
+            }
+
+            productCount.innerText = `${validProducts.length} produtos carregados`;
+
+            validProducts.forEach(product => {
+                // Criar o card do produto
+                const card = document.createElement('div');
+                card.className = 'bg-white shadow-sm rounded-lg p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between';
+
+                // --- Informações do produto (Atualizado) ---
+                const infoDiv = document.createElement('div');
+                infoDiv.className = 'flex-1 mb-4 sm:mb-0 sm:pr-4'; 
+                
+                const codeDiv = document.createElement('div');
+                codeDiv.className = 'flex items-center text-sm text-gray-500 mb-1';
+                codeDiv.innerHTML = `<span class="font-medium mr-4">Cód: ${product.codprod}</span> <span>EAN: ${product.ean || 'N/A'}</span>`;
+
+                const desc = document.createElement('h3');
+                desc.className = 'text-lg font-semibold text-gray-800';
+                desc.innerText = product.descricao;
+                
+                // --- Stats (Atualizado com Cálculo) ---
+                const statsDiv = document.createElement('div');
+                statsDiv.className = 'flex flex-wrap items-center text-sm text-gray-700 mt-2 gap-x-4 gap-y-1';
+                
+                const pUnid = parseFloat(product.qt_unid?.replace(',', '.')) || 0;
+                const pMaster = parseFloat(product.qt_master?.replace(',', '.')) || 0;
+                
+                let unidPorCaixa = 0;
+                if (pMaster > 0) {
+                    unidPorCaixa = pUnid / pMaster;
+                }
+
+                const qtUnid = document.createElement('p');
+                qtUnid.innerHTML = `Estoque: <span class="font-bold text-red-600">${pUnid.toFixed(0)} UN</span>`;
+                
+                const preco = document.createElement('p');
+                preco.innerHTML = `Preço: <span class="font-bold text-green-600">R$ ${product.preco_unidade}</span>`;
+                
+                // Nova informação
+                const porCaixa = document.createElement('p');
+                // Arredondar para o inteiro mais próximo
+                porCaixa.innerHTML = `Por Caixa: <span class="font-bold text-blue-600">${Math.round(unidPorCaixa)} UN</span>`;
+
+                statsDiv.appendChild(qtUnid);
+                statsDiv.appendChild(preco);
+                statsDiv.appendChild(porCaixa); // Adicionado
+
+                infoDiv.appendChild(codeDiv);
+                infoDiv.appendChild(desc);
+                infoDiv.appendChild(statsDiv);
+                // --- Fim das Informações ---
+
+
+                // Botão de busca
+                const buttonLink = document.createElement('a');
+                
+                const searchQuery = encodeURIComponent(`${product.descricao} ${product.ean || ''}`);
+                buttonLink.href = `https://www.google.com/search?tbm=isch&q=${searchQuery}`;
+                buttonLink.target = '_blank';
+                buttonLink.rel = 'noopener noreferrer';
+                buttonLink.className = 'w-full mt-3 sm:mt-0 sm:w-auto flex-shrink-0 inline-block px-5 py-3 bg-blue-600 text-white text-sm font-medium rounded-md text-center hover:bg-blue-700 transition-colors duration-200';
+                buttonLink.innerText = 'Buscar Imagem';
+
+                // Montar o card
+                card.appendChild(infoDiv);
+                card.appendChild(buttonLink);
+                
+                productList.appendChild(card);
+            });
+        }
+    </script>
+</body>
+</html>
