@@ -523,8 +523,12 @@
 
 
             // 3. Cria os botões de filtro dinamicamente
-            const suppliers = ['Todos', ...new Set(validProducts.map(p => getSupplier(p.descricao)))];
-            suppliers.sort(); // Ordena alfabeticamente (exceto 'Todos')
+            // Pega apenas os fornecedores únicos
+            let suppliers = [...new Set(validProducts.map(p => getSupplier(p.descricao)))];
+            suppliers.sort(); // Ordena alfabeticamente
+            
+            // Adiciona 'Todos' ao final da lista
+            suppliers.push('Todos'); 
 
             suppliers.forEach((supplier, index) => {
                 const button = document.createElement('button');
