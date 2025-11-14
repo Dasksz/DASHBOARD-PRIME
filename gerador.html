@@ -231,7 +231,7 @@
             productCount.innerText = productsToRender.length + ' produtos encontrados';
 
             if (productsToRender.length === 0) {
-                productList.innerHTML = '<p class=\'text-gray-500 p-4 w-full text-center\'>Nenhum produto encontrado.</p>';
+                productList.innerHTML = '<p class=\\'text-gray-500 p-4 w-full text-center\\'>Nenhum produto encontrado.</p>';
                 checkScrollButtons();
                 return;
             }
@@ -258,7 +258,7 @@
                 const headerDiv = document.createElement('div');
                 // Usamos concatenação (+) para construir o HTML de forma segura dentro do template literal
                 headerDiv.innerHTML = 
-                    '<div class=\'text-xs text-gray-400 mb-2\'>Cód: ' + product.codprod + ' | EAN: ' + (product.ean || 'N/A') + '</div>';
+                    '<div class=\\'text-xs text-gray-400 mb-2\\'>Cód: ' + product.codprod + ' | EAN: ' + (product.ean || 'N/A') + '</div>';
 
                 const desc = document.createElement('h3');
                 desc.className = 'text-lg sm:text-xl font-bold text-gray-900 mb-4 flex-grow'; // flex-grow adicionado
@@ -268,16 +268,16 @@
                 statsDiv.className = 'grid grid-cols-3 gap-1 sm:gap-2 text-center mb-6 border-y border-gray-100 py-4';
                 statsDiv.innerHTML = 
                     '<div>' +
-                        '<span class=\'block text-sm text-gray-500\'>Estoque</span>' +
-                        '<span class=\'block font-bold text-2xl sm:text-4xl md:text-5xl text-red-600\'>' + pUnid.toFixed(0) + '</span>' +
+                        '<span class=\\'block text-sm text-gray-500\\'>Estoque</span>' +
+                        '<span class=\\'block font-bold text-2xl sm:text-4xl md:text-5xl text-red-600\\'>' + pUnid.toFixed(0) + '</span>' +
                     '</div>' +
                     '<div>' +
-                        '<span class=\'block text-sm text-gray-500\'>Preço (UN)</span>' +
-                        '<span class=\'block font-bold text-2xl sm:text-4xl md:text-5xl text-green-600\'>R$' + product.preco_unidade + '</span>' +
+                        '<span class=\\'block text-sm text-gray-500\\'>Preço (UN)</span>' +
+                        '<span class=\\'block font-bold text-2xl sm:text-4xl md:text-5xl text-green-600\\'>R$' + product.preco_unidade + '</span>' +
                     '</div>' +
                     '<div>' +
-                        '<span class=\'block text-sm text-gray-500\'>UN / Caixa</span>' +
-                        '<span class=\'block font-bold text-2xl sm:text-4xl md:text-5xl text-blue-600\'>' + Math.round(unidPorCaixa) + '</span>' +
+                        '<span class=\\'block text-sm text-gray-500\\'>UN / Caixa</span>' +
+                        '<span class=\\'block font-bold text-2xl sm:text-4xl md:text-5xl text-blue-600\\'>' + Math.round(unidPorCaixa) + '</span>' +
                     '</div>';
 
                 const searchLink = document.createElement('a');
