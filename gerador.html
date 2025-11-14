@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gerador de Catálogo a partir de CSV</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Biblioteca SheetJS para ler ficheiros XLSX e XLS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
         body { font-family: 'Inter', sans-serif; }
@@ -53,9 +55,9 @@
             <div class="flex gap-3">
                 <!-- Botão de Carregar Ficheiro -->
                 <label for="csvFileInput" class="cursor-pointer bg-blue-600 text-white px-5 py-2.5 rounded-lg font-medium hover:bg-blue-700 transition-colors duration-200">
-                    Carregar CSV (.csv)
+                    Carregar Ficheiro
                 </label>
-                <input type="file" id="csvFileInput" class="hidden" accept=".csv" onchange="handleFileSelect(event)">
+                <input type="file" id="csvFileInput" class="hidden" accept=".csv,.xlsx,.xls" onchange="handleFileSelect(event)">
                 <!-- Botão de Baixar HTML -->
                 <button onclick="downloadHtml()" class="bg-green-600 text-white px-5 py-2.5 rounded-lg font-medium hover:bg-green-700 transition-colors duration-200">
                     Baixar HTML
@@ -65,7 +67,7 @@
 
         <!-- Instruções -->
         <p class="text-gray-600 mb-4">
-            Cole aqui o conteúdo do seu CSV (ou carregue o ficheiro acima). O cabeçalho (primeira linha) deve ser semelhante a: 
+            Carregue um ficheiro (.csv, .xlsx, .xls) ou cole aqui o conteúdo. O cabeçalho (primeira linha) deve ser semelhante a:
             <code class="text-sm bg-gray-200 p-1 rounded">CODPROD,DESCRIÇÃO,QT. UNID.,PREÇO UNIDADE,QT EMBALAGEM MASTER,EAN</code>
         </p>
 
@@ -419,17 +421,70 @@
         }
 
         /**
-         * Lida com a seleção de um ficheiro CSV
+         * Lida com a seleção de um ficheiro (CSV, XLSX, XLS)
          */
         function handleFileSelect(event) {
             const file = event.target.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    document.getElementById('csvData').value = e.target.result;
-                    showToast('Ficheiro CSV carregado com sucesso!');
-                };
-                reader.readAsText(file);
+            if (!file) return;
+
+            const reader = new FileReader();
+            const fileExtension = file.name.split('.').pop().toLowerCase();
+
+            reader.onload = function(e) {
+                const data = e.target.result;
+                // Limpa o array de produtos antes de processar um novo ficheiro
+                productsArray = [];
+                let rawTextForTextarea = '';
+
+                try {
+                    if (fileExtension === 'csv') {
+                        rawTextForTextarea = data;
+                        productsArray = parseCSV(data);
+                    } else if (fileExtension === 'xlsx' || fileExtension === 'xls') {
+                        // A função parseExcel será criada no próximo passo
+                        productsArray = parseExcel(data);
+
+                        // Para visualização, converte os dados processados de volta para uma string CSV
+                        if (productsArray.length > 0) {
+                            const headers = Object.keys(productsArray[0]);
+                            const headerRow = headers.join(',');
+                            const dataRows = productsArray.map(row =>
+                                headers.map(header => {
+                                    const cell = String(row[header] || '');
+                                    // Escapa aspas e vírgulas
+                                    if (cell.includes(',') || cell.includes('"')) {
+                                        return `"${cell.replace(/"/g, '""')}"`;
+                                    }
+                                    return cell;
+                                }).join(',')
+                            );
+                            rawTextForTextarea = [headerRow, ...dataRows].join('\n');
+                        }
+                    }
+
+                    document.getElementById('csvData').value = rawTextForTextarea;
+
+                    if (productsArray.length > 0) {
+                        showToast(`Ficheiro ${file.name} carregado. ${productsArray.length} produtos prontos.`);
+                    } else {
+                        showToast(`Ficheiro ${file.name} processado, mas nenhum produto válido encontrado.`);
+                    }
+                } catch (error) {
+                    console.error('Erro ao processar o ficheiro:', error);
+                    showToast('Ocorreu um erro ao processar o ficheiro. Verifique o console.');
+                    productsArray = []; // Garante que o array está vazio em caso de erro
+                }
+            };
+
+            reader.onerror = () => showToast('Não foi possível ler o ficheiro.');
+
+            // Lê o ficheiro como texto para CSV ou como ArrayBuffer para Excel
+            if (fileExtension === 'csv') {
+                reader.readAsText(file, 'UTF-8');
+            } else if (fileExtension === 'xlsx' || fileExtension === 'xls') {
+                reader.readAsArrayBuffer(file);
+            } else {
+                showToast('Formato de ficheiro não suportado.');
             }
         }
 
@@ -448,6 +503,56 @@
                 .replace(/[\u0300-\u036f]/g, "")
                 .replace(/[^a-z0-9_]+/g, '_') // Substitui espaços, pontos, etc. por _ (ex: "preco_unidade")
                 .replace(/^_|_$/g, ''); // Remove _ do início/fim
+        }
+
+        /**
+         * Converte os dados de uma planilha Excel (XLSX/XLS) num array de objetos
+         */
+        function parseExcel(data) {
+            const workbook = XLSX.read(data, { type: 'array' });
+            const firstSheetName = workbook.SheetNames[0];
+            const worksheet = workbook.Sheets[firstSheetName];
+
+            // Converte a planilha para um array de objetos. A primeira linha é usada como cabeçalho.
+            const jsonData = XLSX.utils.sheet_to_json(worksheet);
+
+            if (!jsonData || jsonData.length === 0) {
+                return [];
+            }
+
+            // Reutiliza a definição de chaves esperadas para manter a consistência com o CSV
+            const expectedKeys = {
+                codprod: ['codprod'],
+                descricao: ['descricao', 'descrição'],
+                qt_unid: ['qt_unid', 'qt. unid.', 'qt unid'],
+                preco_unidade: ['preco_unidade', 'preço unidade', 'preco unidade'],
+                qt_master: ['qt_master', 'qt embalagem master', 'qt. embalagem master', 'qt_embalagem_master'],
+                ean: ['ean']
+            };
+
+            // Cria um mapa reverso: `normalizedSynonym` -> `templateKey`
+            const headerMap = {};
+            for (const templateKey in expectedKeys) {
+                for (const synonym of expectedKeys[templateKey]) {
+                    headerMap[normalizeHeader(synonym)] = templateKey;
+                }
+            }
+
+            const processedData = jsonData.map(row => {
+                const newRow = {};
+                for (const originalHeader in row) {
+                    const normalizedHeader = normalizeHeader(originalHeader);
+                    const templateKey = headerMap[normalizedHeader];
+                    if (templateKey) {
+                        // Atribui o valor à chave correta que o template espera
+                        newRow[templateKey] = String(row[originalHeader] || '').trim();
+                    }
+                }
+                return newRow;
+            });
+
+            // Filtra linhas que não têm um codprod, tal como o parseCSV faz
+            return processedData.filter(row => row.codprod);
         }
 
         /**
@@ -548,15 +653,22 @@
          * Gera e faz o download do ficheiro HTML final
          */
         function downloadHtml() {
+            // Se o productsArray já foi preenchido por um upload de ficheiro, usa-o diretamente.
+            // Se o utilizador colou/editou texto, o productsArray pode estar vazio ou desatualizado.
+            // Portanto, re-processamos o conteúdo da textarea como CSV se o array estiver vazio.
             const csvData = document.getElementById('csvData').value;
-            if (!csvData.trim()) {
-                showToast('Erro: Nenhum dado CSV foi fornecido.');
-                return;
+
+            if (productsArray.length === 0) {
+                if (!csvData.trim()) {
+                    showToast('Erro: Nenhum dado foi fornecido.');
+                    return;
+                }
+                // Se o array está vazio mas há texto, trata-o como CSV
+                productsArray = parseCSV(csvData);
             }
 
-            productsArray = parseCSV(csvData);
             if (productsArray.length === 0) {
-                showToast('Erro ao processar o CSV. Verifique os cabeçalhos.');
+                showToast('Erro ao processar os dados. Verifique o formato e os cabeçalhos.');
                 return;
             }
 
