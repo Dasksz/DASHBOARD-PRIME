@@ -93,7 +93,7 @@
     <meta charset='UTF-8'>
     <meta name='viewport' content='width=device-width, initial-scale=1.0'>
     <title>Catálogo Interativo de Produtos</title>
-    <script src='https://cdn.tailwindcss.com'></script>
+    <script src='https://cdn.tailwindcss.com'><\/script>
     <link href='https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap' rel='stylesheet'>
     <style>
         body { 
@@ -560,6 +560,7 @@
 
         /**
          * Converte o texto CSV num array de objetos
+         * (VERSÃO ATUALIZADA que deteta vírgula ou ponto e vírgula)
          */
         function parseCSV(data) {
             // Divide as linhas, filtrando linhas vazias
@@ -568,6 +569,25 @@
                 showToast('Erro: CSV vazio ou sem dados.');
                 return [];
             }
+
+            // --- NOVO: Detecção Automática do Delimitador ---
+            const headerRow = rows[0]; // Pega a primeira linha (cabeçalho)
+            let delimiter = ','; // Define vírgula (,) como padrão
+
+            // Se a linha de cabeçalho tiver ponto e vírgula (;)
+            // e tiver MAIS (ou igual) ';' do que ',', usamos ';'
+            if (headerRow.includes(';')) {
+                const commaCount = (headerRow.match(/,/g) || []).length;
+                const semicolonCount = (headerRow.match(/;/g) || []).length;
+                
+                if (semicolonCount >= commaCount) {
+                    delimiter = ';';
+                    console.log("Delimitador detetado: Ponto e Vírgula (;) ");
+                } else {
+                    console.log("Delimitador detetado: Vírgula (,)");
+                }
+            }
+            // --------------------------------------------------
 
             // --- Mapeamento de Cabeçalhos ---
             
@@ -582,7 +602,8 @@
             };
 
             // 2. Normaliza os cabeçalhos encontrados no ficheiro
-            const headersFound = rows[0].split(',').map(normalizeHeader);
+            // --- MODIFICADO: Usa o 'delimiter' detetado ---
+            const headersFound = rows[0].split(delimiter).map(normalizeHeader);
             
             // 3. Cria um mapa de índice da coluna -> para a chave que o template espera
             // Ex: { 0: 'codprod', 1: 'descricao', 3: 'qt_unid', ... }
@@ -616,6 +637,7 @@
 
             if (trulyMissing.length > 0) {
                 showToast('Erro: Cabeçalhos essenciais em falta: ' + trulyMissing.join(', '));
+                console.error('Delimitador usado:', delimiter);
                 console.error('Cabeçalhos normalizados encontrados no ficheiro:', headersFound);
                 console.error('Mapa de índices (coluna -> chave) criado:', indexMap);
                 console.error('Cabeçalhos essenciais que faltam:', trulyMissing);
@@ -625,7 +647,8 @@
             // 5. Processa as linhas de dados usando o mapa de índices
             const lines = [];
             for (let i = 1; i < rows.length; i++) {
-                const values = rows[i].split(',').map(v => v.trim().replace(/"/g, ''));
+                // --- MODIFICADO: Usa o 'delimiter' detetado ---
+                const values = rows[i].split(delimiter).map(v => v.trim().replace(/"/g, ''));
                 let obj = {};
                 
                 // Para cada valor na linha...
