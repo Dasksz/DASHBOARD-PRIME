@@ -196,10 +196,7 @@
 
     <script>
         // --- Constante de Produtos ---
-        const products = [
-            // OS PRODUTOS SERÃO INSERIDOS AQUI
-            "__PRODUCTS_PLACEHOLDER__"
-        ];
+        const products = __PRODUCTS_PLACEHOLDER__;
 
         // --- Variáveis Globais ---
         const productList = document.getElementById('product-list');
@@ -357,33 +354,36 @@
          * Função principal executada quando a página carrega
          */
         window.onload = function() {
-            // 1. O 'products[0]' acontece porque estamos a injetar o array dentro de outro array
-            // Filtra produtos inválidos
-            validProducts = products[0].filter(p => 
+            // 1. Filtra produtos inválidos
+            validProducts = products.filter(p =>
                 p && typeof p === 'object' && p.codprod && p.descricao && 
                 !Object.keys(p).some(key => key.includes('"') || key.includes(':'))
             );
             
-            // 2. Ordena os produtos válidos
+            // 2. Ordena os produtos válidos (ESTOQUE PRIMEIRO)
             validProducts.sort((a, b) => {
-                const supplierA = getSupplier(a.descricao);
-                const supplierB = getSupplier(b.descricao);
-                const descA = a.descricao.toUpperCase();
-                const descB = b.descricao.toUpperCase();
-                // Adicionada ordenação de Nível 3 (Estoque)
                 const estoqueA = parseFloat(a.qt_unid?.replace(',', '.')) || 0;
                 const estoqueB = parseFloat(b.qt_unid?.replace(',', '.')) || 0;
 
-                // Nível 1: Descrição
+                // Nível 1: Estoque (do maior para o menor)
+                if (estoqueA !== estoqueB) {
+                    return estoqueB - estoqueA;
+                }
+
+                // Nível 2: Descrição (A-Z)
+                const descA = a.descricao.toUpperCase();
+                const descB = b.descricao.toUpperCase();
                 if (descA < descB) return -1;
                 if (descA > descB) return 1;
-                // Nível 2: Fornecedor
+
+                // Nível 3: Fornecedor (A-Z)
+                const supplierA = getSupplier(a.descricao);
+                const supplierB = getSupplier(b.descricao);
                 if (supplierA < supplierB) return -1;
                 if (supplierA > supplierB) return 1;
-                
-                // Nível 3: Estoque (maior para o menor)
-                return estoqueB - estoqueA; // b - a para descendente
-            }); 
+
+                return 0;
+            });
 
             createFilterButtons();
             renderProducts(validProducts);
@@ -560,10 +560,9 @@
                 return;
             }
 
-            // Substitui o marcador \${...} pelo array de produtos
-            // Usamos JSON.stringify para converter o array em texto
+            // Substitui o marcador pelo array de produtos (convertido para texto)
             const finalHtml = canvasTemplate
-                .replace('"__PRODUCTS_PLACEHOLDER__"', JSON.stringify(productsArray, null, 2));
+                .replace('__PRODUCTS_PLACEHOLDER__', JSON.stringify(productsArray, null, 2));
 
             // Cria um link de download
             const blob = new Blob([finalHtml], { type: 'text/html' });
