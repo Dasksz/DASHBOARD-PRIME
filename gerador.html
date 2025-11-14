@@ -67,7 +67,7 @@
 
         <!-- Instruções -->
         <p class="text-gray-600 mb-4">
-            Carregue um ficheiro (.csv, .xlsx, .xls) ou cole aqui o conteúdo. O cabeçalho (primeira linha) deve ser semelhante a:
+            Carregue um ficheiro (.csv, .xlsx, .xls) ou cole aqui o conteúdo. O cabeçalho (primeira linha) deve ser semelhante a: 
             <code class="text-sm bg-gray-200 p-1 rounded">CODPROD,DESCRIÇÃO,QT. UNID.,PREÇO UNIDADE,QT EMBALAGEM MASTER,EAN</code>
         </p>
 
@@ -357,7 +357,7 @@
          */
         window.onload = function() {
             // 1. Filtra produtos inválidos
-            validProducts = products.filter(p =>
+            validProducts = products.filter(p => 
                 p && typeof p === 'object' && p.codprod && p.descricao && 
                 !Object.keys(p).some(key => key.includes('"') || key.includes(':'))
             );
@@ -377,7 +377,7 @@
                 const descB = b.descricao.toUpperCase();
                 if (descA < descB) return -1;
                 if (descA > descB) return 1;
-
+                
                 // Nível 3: Fornecedor (A-Z)
                 const supplierA = getSupplier(a.descricao);
                 const supplierB = getSupplier(b.descricao);
@@ -421,6 +421,28 @@
         }
 
         /**
+         * Converte um array de objetos para uma string CSV.
+         */
+        function convertArrayOfObjectsToCSV(data) {
+            if (!data || data.length === 0) {
+                return '';
+            }
+            const headers = Object.keys(data[0]);
+            const headerRow = headers.join(',');
+            const dataRows = data.map(row => 
+                headers.map(header => {
+                    const cell = String(row[header] || '');
+                    // Escapa aspas e vírgulas para manter a integridade do CSV
+                    if (cell.includes(',') || cell.includes('"')) {
+                        return `"${cell.replace(/"/g, '""')}"`;
+                    }
+                    return cell;
+                }).join(',')
+            );
+            return [headerRow, ...dataRows].join('\n');
+        }
+
+        /**
          * Lida com a seleção de um ficheiro (CSV, XLSX, XLS)
          */
         function handleFileSelect(event) {
@@ -432,53 +454,34 @@
 
             reader.onload = function(e) {
                 const data = e.target.result;
-                // Limpa o array de produtos antes de processar um novo ficheiro
-                productsArray = [];
-                let rawTextForTextarea = '';
+                let products = [];
+                let csvString = '';
 
                 try {
                     if (fileExtension === 'csv') {
-                        rawTextForTextarea = data;
-                        productsArray = parseCSV(data);
+                        products = parseCSV(data);
+                        csvString = data; // O ficheiro original já é o nosso CSV
                     } else if (fileExtension === 'xlsx' || fileExtension === 'xls') {
-                        // A função parseExcel será criada no próximo passo
-                        productsArray = parseExcel(data);
-
-                        // Para visualização, converte os dados processados de volta para uma string CSV
-                        if (productsArray.length > 0) {
-                            const headers = Object.keys(productsArray[0]);
-                            const headerRow = headers.join(',');
-                            const dataRows = productsArray.map(row =>
-                                headers.map(header => {
-                                    const cell = String(row[header] || '');
-                                    // Escapa aspas e vírgulas
-                                    if (cell.includes(',') || cell.includes('"')) {
-                                        return `"${cell.replace(/"/g, '""')}"`;
-                                    }
-                                    return cell;
-                                }).join(',')
-                            );
-                            rawTextForTextarea = [headerRow, ...dataRows].join('\n');
-                        }
+                        products = parseExcel(data);
+                        // Converte o resultado do Excel para uma string CSV para a textarea
+                        csvString = convertArrayOfObjectsToCSV(products);
                     }
 
-                    document.getElementById('csvData').value = rawTextForTextarea;
+                    document.getElementById('csvData').value = csvString;
 
-                    if (productsArray.length > 0) {
-                        showToast(`Ficheiro ${file.name} carregado. ${productsArray.length} produtos prontos.`);
+                    if (products.length > 0) {
+                        showToast(`Ficheiro ${file.name} carregado e convertido para a área de texto.`);
                     } else {
                         showToast(`Ficheiro ${file.name} processado, mas nenhum produto válido encontrado.`);
                     }
                 } catch (error) {
                     console.error('Erro ao processar o ficheiro:', error);
                     showToast('Ocorreu um erro ao processar o ficheiro. Verifique o console.');
-                    productsArray = []; // Garante que o array está vazio em caso de erro
                 }
             };
 
             reader.onerror = () => showToast('Não foi possível ler o ficheiro.');
 
-            // Lê o ficheiro como texto para CSV ou como ArrayBuffer para Excel
             if (fileExtension === 'csv') {
                 reader.readAsText(file, 'UTF-8');
             } else if (fileExtension === 'xlsx' || fileExtension === 'xls') {
@@ -512,14 +515,14 @@
             const workbook = XLSX.read(data, { type: 'array' });
             const firstSheetName = workbook.SheetNames[0];
             const worksheet = workbook.Sheets[firstSheetName];
-
+            
             // Converte a planilha para um array de objetos. A primeira linha é usada como cabeçalho.
             const jsonData = XLSX.utils.sheet_to_json(worksheet);
 
             if (!jsonData || jsonData.length === 0) {
                 return [];
             }
-
+            
             // Reutiliza a definição de chaves esperadas para manter a consistência com o CSV
             const expectedKeys = {
                 codprod: ['codprod'],
@@ -550,7 +553,7 @@
                 }
                 return newRow;
             });
-
+            
             // Filtra linhas que não têm um codprod, tal como o parseCSV faz
             return processedData.filter(row => row.codprod);
         }
@@ -653,28 +656,23 @@
          * Gera e faz o download do ficheiro HTML final
          */
         function downloadHtml() {
-            // Se o productsArray já foi preenchido por um upload de ficheiro, usa-o diretamente.
-            // Se o utilizador colou/editou texto, o productsArray pode estar vazio ou desatualizado.
-            // Portanto, re-processamos o conteúdo da textarea como CSV se o array estiver vazio.
             const csvData = document.getElementById('csvData').value;
-
-            if (productsArray.length === 0) {
-                if (!csvData.trim()) {
-                    showToast('Erro: Nenhum dado foi fornecido.');
-                    return;
-                }
-                // Se o array está vazio mas há texto, trata-o como CSV
-                productsArray = parseCSV(csvData);
+            if (!csvData.trim()) {
+                showToast('Erro: Nenhum dado foi fornecido na área de texto.');
+                return;
             }
 
-            if (productsArray.length === 0) {
-                showToast('Erro ao processar os dados. Verifique o formato e os cabeçalhos.');
+            // A área de texto é agora a única fonte de verdade.
+            const products = parseCSV(csvData);
+
+            if (products.length === 0) {
+                showToast('Erro ao processar os dados da área de texto. Verifique o formato e os cabeçalhos.');
                 return;
             }
 
             // Substitui o marcador pelo array de produtos (convertido para texto)
             const finalHtml = canvasTemplate
-                .replace('__PRODUCTS_PLACEHOLDER__', JSON.stringify(productsArray, null, 2));
+                .replace('__PRODUCTS_PLACEHOLDER__', JSON.stringify(products, null, 2));
 
             // Cria um link de download
             const blob = new Blob([finalHtml], { type: 'text/html' });
