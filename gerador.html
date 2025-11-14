@@ -171,9 +171,18 @@
 
     <div class='bg-white shadow-md sticky top-0 z-20'>
         <div class='container mx-auto max-w-7xl p-4'>
-            <label class='block text-sm font-medium text-gray-700 mb-2'>Filtrar por Fornecedor:</label>
-            <div id='filter-buttons' class='flex flex-wrap gap-2'>
-                <!-- Botões de filtro inseridos via JS -->
+            <div class='flex flex-col sm:flex-row gap-4'>
+                <div class='flex-grow'>
+                    <label for='supplier-filter' class='block text-sm font-medium text-gray-700 mb-2'>Filtrar por Fornecedor:</label>
+                    <div id='filter-buttons' class='flex flex-wrap gap-2'>
+                        <!-- Botões de filtro inseridos via JS -->
+                    </div>
+                </div>
+                <div class='flex-grow relative'>
+                    <label for='search-input' class='block text-sm font-medium text-gray-700 mb-2'>Buscar por Código ou Nome:</label>
+                    <input type='text' id='search-input' placeholder='Digite para buscar...' class='w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500'>
+                    <div id='suggestions-container' class='absolute z-30 w-full bg-white border border-gray-300 rounded-lg mt-1 max-h-60 overflow-y-auto'></div>
+                </div>
             </div>
         </div>
     </div>
@@ -206,7 +215,10 @@
         const filterContainer = document.getElementById('filter-buttons');
         const prevButton = document.getElementById('prev-btn');
         const nextButton = document.getElementById('next-btn');
+        const searchInput = document.getElementById('search-input');
+        const suggestionsContainer = document.getElementById('suggestions-container');
         let validProducts = []; // Array para produtos limpos e válidos
+        let currentFilteredProducts = []; // Para saber a lista atual de produtos visíveis
 
         /**
          * Extrai o nome do fornecedor da descrição
@@ -221,6 +233,65 @@
             if (desc.startsWith('B UNIAO')) return 'ZENTOYS';
             if (desc.startsWith('FAMPAR')) return 'ZENTOYS';
             return 'Outros';
+        }
+
+        /**
+         * Exibe as sugestões de busca
+         */
+        function displaySuggestions(suggestions) {
+            suggestionsContainer.innerHTML = '';
+            if (suggestions.length === 0) {
+                suggestionsContainer.style.display = 'none';
+                return;
+            }
+
+            suggestions.forEach(product => {
+                const suggestionItem = document.createElement('div');
+                suggestionItem.className = 'p-2 hover:bg-gray-100 cursor-pointer';
+                suggestionItem.textContent = `${product.codprod} - ${product.descricao}`;
+
+                suggestionItem.onclick = () => {
+                    const card = document.querySelector(`.product-card[data-codprod='${product.codprod}']`);
+                    if (card) {
+                        card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+                        card.style.transition = 'all 0.2s ease-in-out';
+                        card.style.transform = 'scale(1.03)';
+                        card.style.boxShadow = '0 0 15px rgba(59, 130, 246, 0.5)';
+                        setTimeout(() => {
+                            card.style.transform = 'scale(1)';
+                            card.style.boxShadow = '';
+                        }, 1200);
+                    }
+                    searchInput.value = '';
+                    suggestionsContainer.innerHTML = '';
+                    suggestionsContainer.style.display = 'none';
+                };
+                suggestionsContainer.appendChild(suggestionItem);
+            });
+
+            suggestionsContainer.style.display = 'block';
+        }
+
+        /**
+         * Lida com a entrada de texto no campo de busca
+         */
+        function handleSearchInput(event) {
+            const searchTerm = event.target.value.toLowerCase();
+
+            if (searchTerm.length < 2) {
+                suggestionsContainer.style.display = 'none';
+                renderProducts(currentFilteredProducts); // Restaura a lista filtrada atual
+                return;
+            }
+
+            const searchResults = currentFilteredProducts.filter(p =>
+                p.descricao.toLowerCase().includes(searchTerm) ||
+                p.codprod.toLowerCase().includes(searchTerm)
+            );
+
+            renderProducts(searchResults);
+            displaySuggestions(searchResults);
         }
 
         /**
@@ -245,23 +316,21 @@
                 const card = document.createElement('div');
                 card.className = 'product-card relative bg-white shadow-xl rounded-xl p-4 sm:p-6 w-[90%] sm:w-[85%] md:w-[80%] lg:w-[70%] xl:w-[60%] transition-all duration-300 hover:shadow-2xl';
                 card.dataset.supplier = supplierName;
+                card.dataset.codprod = product.codprod; // Adicionado para a busca
 
                 const badge = document.createElement('span');
                 badge.className = 'absolute top-4 right-4 bg-indigo-100 text-indigo-800 text-xs font-semibold px-2.5 py-0.5 rounded-full';
                 badge.innerText = supplierName;
                 
                 const infoDiv = document.createElement('div');
-                // Classe ajustada para layout flex-grow
                 infoDiv.className = 'flex flex-col h-full min-h-[420px]';
                 
-                // Dividido header e descrição
                 const headerDiv = document.createElement('div');
-                // Usamos concatenação (+) para construir o HTML de forma segura dentro do template literal
                 headerDiv.innerHTML = 
                     '<div class=\\'text-xs text-gray-400 mb-2\\'>Cód: ' + product.codprod + ' | EAN: ' + (product.ean || 'N/A') + '</div>';
 
                 const desc = document.createElement('h3');
-                desc.className = 'text-lg sm:text-xl font-bold text-gray-900 mb-4 flex-grow'; // flex-grow adicionado
+                desc.className = 'text-lg sm:text-xl font-bold text-gray-900 mb-4 flex-grow';
                 desc.innerText = product.descricao;
 
                 const statsDiv = document.createElement('div');
@@ -285,11 +354,9 @@
                 searchLink.href = 'https://www.google.com/search?tbm=isch&q=' + searchQuery;
                 searchLink.target = '_blank';
                 searchLink.rel = 'noopener noreferrer';
-                // mt-auto adicionado
                 searchLink.className = 'w-full mt-auto inline-block text-center px-6 py-3 bg-blue-600 text-white text-sm sm:text-base font-medium rounded-lg hover:bg-blue-700 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 uppercase';
                 searchLink.innerText = 'PESQUISAR IMAGEM';
 
-                // Ordem de montagem ajustada
                 infoDiv.appendChild(headerDiv);
                 infoDiv.appendChild(desc);
                 infoDiv.appendChild(statsDiv);
@@ -312,11 +379,15 @@
             
             productList.scrollTo({ left: 0, behavior: 'auto' });
             
-            const productsToRender = (supplier === 'Todos')
+            // Limpa a busca ao trocar de filtro
+            searchInput.value = '';
+            suggestionsContainer.style.display = 'none';
+
+            currentFilteredProducts = (supplier === 'Todos')
                 ? validProducts
                 : validProducts.filter(p => getSupplier(p.descricao) === supplier);
             
-            renderProducts(productsToRender);
+            renderProducts(currentFilteredProducts);
         }
 
         /**
@@ -324,7 +395,7 @@
          */
         function createFilterButtons() {
             const suppliers = ['Todos', ...new Set(validProducts.map(p => getSupplier(p.descricao)))];
-            suppliers.sort(); // Ordena alfabeticamente
+            suppliers.sort();
 
             suppliers.forEach(supplier => {
                 const button = document.createElement('button');
@@ -345,10 +416,10 @@
          */
         function checkScrollButtons() {
             setTimeout(() => {
-                if (!productList) return; // Garante que o elemento existe
+                if (!productList) return;
                 const maxScroll = productList.scrollWidth - productList.clientWidth;
                 prevButton.disabled = productList.scrollLeft <= 0;
-                nextButton.disabled = productList.scrollLeft >= maxScroll - 2; // -2 de margem
+                nextButton.disabled = productList.scrollLeft >= maxScroll - 2;
             }, 100);
         }
 
@@ -356,39 +427,29 @@
          * Função principal executada quando a página carrega
          */
         window.onload = function() {
-            // 1. Filtra produtos inválidos
             validProducts = products.filter(p => 
                 p && typeof p === 'object' && p.codprod && p.descricao && 
                 !Object.keys(p).some(key => key.includes('"') || key.includes(':'))
             );
             
-            // 2. Ordena os produtos válidos (ESTOQUE PRIMEIRO)
             validProducts.sort((a, b) => {
                 const estoqueA = parseFloat(a.qt_unid?.replace(',', '.')) || 0;
                 const estoqueB = parseFloat(b.qt_unid?.replace(',', '.')) || 0;
-
-                // Nível 1: Estoque (do maior para o menor)
-                if (estoqueA !== estoqueB) {
-                    return estoqueB - estoqueA;
-                }
-
-                // Nível 2: Descrição (A-Z)
+                if (estoqueA !== estoqueB) return estoqueB - estoqueA;
                 const descA = a.descricao.toUpperCase();
                 const descB = b.descricao.toUpperCase();
                 if (descA < descB) return -1;
                 if (descA > descB) return 1;
-                
-                // Nível 3: Fornecedor (A-Z)
                 const supplierA = getSupplier(a.descricao);
                 const supplierB = getSupplier(b.descricao);
                 if (supplierA < supplierB) return -1;
                 if (supplierA > supplierB) return 1;
-
                 return 0;
             });
 
+            currentFilteredProducts = [...validProducts]; // Inicia com todos os produtos
             createFilterButtons();
-            renderProducts(validProducts);
+            renderProducts(currentFilteredProducts);
 
             nextButton.onclick = () => {
                 const scrollAmount = productList.clientWidth * 0.8;
@@ -398,6 +459,14 @@
                 const scrollAmount = productList.clientWidth * 0.8;
                 productList.scrollBy({ left: -scrollAmount, behavior: 'smooth' });
             };
+
+            searchInput.addEventListener('input', handleSearchInput);
+
+            document.addEventListener('click', function(event) {
+                if (!searchInput.contains(event.target) && !suggestionsContainer.contains(event.target)) {
+                    suggestionsContainer.style.display = 'none';
+                }
+            });
 
             productList.addEventListener('scroll', checkScrollButtons);
             window.addEventListener('resize', checkScrollButtons);

@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang='pt-br'>
 <head>
@@ -83,9 +82,18 @@
 
     <div class='bg-white shadow-md sticky top-0 z-20'>
         <div class='container mx-auto max-w-7xl p-4'>
-            <label class='block text-sm font-medium text-gray-700 mb-2'>Filtrar por Fornecedor:</label>
-            <div id='filter-buttons' class='flex flex-wrap gap-2'>
-                <!-- Botões de filtro inseridos via JS -->
+            <div class='flex flex-col sm:flex-row gap-4'>
+                <div class='flex-grow'>
+                    <label for='supplier-filter' class='block text-sm font-medium text-gray-700 mb-2'>Filtrar por Fornecedor:</label>
+                    <div id='filter-buttons' class='flex flex-wrap gap-2'>
+                        <!-- Botões de filtro inseridos via JS -->
+                    </div>
+                </div>
+                <div class='flex-grow relative'>
+                    <label for='search-input' class='block text-sm font-medium text-gray-700 mb-2'>Buscar por Código ou Nome:</label>
+                    <input type='text' id='search-input' placeholder='Digite para buscar...' class='w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500'>
+                    <div id='suggestions-container' class='absolute z-30 w-full bg-white border border-gray-300 rounded-lg mt-1 max-h-60 overflow-y-auto'></div>
+                </div>
             </div>
         </div>
     </div>
@@ -111,1575 +119,23 @@
     <script>
         // --- Constante de Produtos ---
         const products = [
-  {
-    "codprod": "6161",
-    "descricao": "RANDON VINHO TINTO SUAV BORDO 1500ML PET",
-    "qt_unid": "306",
-    "preco_unidade": "15.72",
-    "qt_master": "51",
-    "ean": "7896741693082"
-  },
-  {
-    "codprod": "6203",
-    "descricao": "RANDON STEMPEL BLACK VD 600ML",
-    "qt_unid": "240",
-    "preco_unidade": "9.01",
-    "qt_master": "40",
-    "ean": "7896741693822"
-  },
-  {
-    "codprod": "6150",
-    "descricao": "RANDON STEMPEL PINK VD 600ML",
-    "qt_unid": "222",
-    "preco_unidade": "9.01",
-    "qt_master": "37",
-    "ean": "7896741650504"
-  },
-  {
-    "codprod": "6152",
-    "descricao": "RANDON STEMPEL WHITE VD 600ML",
-    "qt_unid": "210",
-    "preco_unidade": "9.01",
-    "qt_master": "35",
-    "ean": "7896741650474"
-  },
-  {
-    "codprod": "6135",
-    "descricao": "RANDON TIKITO ABACAXI C/ HORTELA 450 ML",
-    "qt_unid": "372",
-    "preco_unidade": "2.08",
-    "qt_master": "31",
-    "ean": "7898126631726"
-  },
-  {
-    "codprod": "6151",
-    "descricao": "RANDON STEMPELPINEAPPLE VD 600ML",
-    "qt_unid": "168",
-    "preco_unidade": "9.01",
-    "qt_master": "28",
-    "ean": "7896741650481"
-  },
-  {
-    "codprod": "6153",
-    "descricao": "RANDON STEMPEL RED VD 600ML",
-    "qt_unid": "162",
-    "preco_unidade": "9.01",
-    "qt_master": "27",
-    "ean": "7896741650429"
-  },
-  {
-    "codprod": "6146",
-    "descricao": "RANDON STEMPEL PINEAPPLE VD 355ML",
-    "qt_unid": "144",
-    "preco_unidade": "5.46",
-    "qt_master": "24",
-    "ean": "7896741650498"
-  },
-  {
-    "codprod": "6148",
-    "descricao": "RANDON STEMPEL PINK VD 355ML",
-    "qt_unid": "132",
-    "preco_unidade": "5.46",
-    "qt_master": "22",
-    "ean": "7896741650511"
-  },
-  {
-    "codprod": "6142",
-    "descricao": "RANDON SIDRA GOTAS DO VALE MACA VD 660ML",
-    "qt_unid": "231",
-    "preco_unidade": "9.36",
-    "qt_master": "19.25",
-    "ean": "7896741687005"
-  },
-  {
-    "codprod": "6096",
-    "descricao": "ITAMARATY ROSQUINHA LEITE 310G",
-    "qt_unid": "190",
-    "preco_unidade": "3.85",
-    "qt_master": "19",
-    "ean": "7891340330215"
-  },
-  {
-    "codprod": "6222",
-    "descricao": "RANDON VINHO TINTO SUAVE  VD 1L",
-    "qt_unid": "228",
-    "preco_unidade": "17.49",
-    "qt_master": "19",
-    "ean": "7896741687647"
-  },
-  {
-    "codprod": "6221",
-    "descricao": "RANDON VINHO TINTO SUAVE BORDO VD 1L",
-    "qt_unid": "228",
-    "preco_unidade": "18.36",
-    "qt_master": "19",
-    "ean": "7896741693096"
-  },
-  {
-    "codprod": "6220",
-    "descricao": "RANDON VINHO TINTO SUAVE BORDO VD 750 ML",
-    "qt_unid": "114",
-    "preco_unidade": "15.39",
-    "qt_master": "19",
-    "ean": "7896741687685"
-  },
-  {
-    "codprod": "5848",
-    "descricao": "GSA SANDELLA MISTURA BOLO BAUNILHA 350G",
-    "qt_unid": "195",
-    "preco_unidade": "4.43",
-    "qt_master": "16.25",
-    "ean": "7896071018739"
-  },
-  {
-    "codprod": "6113",
-    "descricao": "DOCILE GELATINES MINI AMORAS HALLOW 15G",
-    "qt_unid": "187",
-    "preco_unidade": "11.32",
-    "qt_master": "15.583333333333334",
-    "ean": "7896451926692"
-  },
-  {
-    "codprod": "6089",
-    "descricao": "ITAMARATY SPANTOOO MINI CHOCOLATE 30G",
-    "qt_unid": "630",
-    "preco_unidade": "0.7",
-    "qt_master": "14",
-    "ean": "7891340365439"
-  },
-  {
-    "codprod": "6149",
-    "descricao": "RANDON STEMPEL RED VD 355ML",
-    "qt_unid": "162",
-    "preco_unidade": "5.46",
-    "qt_master": "13.5",
-    "ean": "7896741650528"
-  },
-  {
-    "codprod": "2722",
-    "descricao": "GSA SANDELLA MISTURA P/ BOLO FESTA 350G",
-    "qt_unid": "161",
-    "preco_unidade": "4.43",
-    "qt_master": "13.416666666666666",
-    "ean": "7896071018746"
-  },
-  {
-    "codprod": "2724",
-    "descricao": "GSA SANDELLA MISTURA P/ BOLO MILH V 350G",
-    "qt_unid": "154",
-    "preco_unidade": "4.43",
-    "qt_master": "12.833333333333334",
-    "ean": "7896071018777"
-  },
-  {
-    "codprod": "2799",
-    "descricao": "GSA SANDELLA TEMPERO EM PO FEIJAO 50G",
-    "qt_unid": "576",
-    "preco_unidade": "2.59",
-    "qt_master": "12",
-    "ean": "7896071018081"
-  },
-  {
-    "codprod": "2719",
-    "descricao": "GSA SANDELLA MISTURA P/ BOLO BRIGAD 350G",
-    "qt_unid": "140",
-    "preco_unidade": "4.43",
-    "qt_master": "11.666666666666666",
-    "ean": "7898514352554"
-  },
-  {
-    "codprod": "5190",
-    "descricao": "GSA SANDELLA MISTURA BOLO COCO 350G",
-    "qt_unid": "135",
-    "preco_unidade": "4.43",
-    "qt_master": "11.25",
-    "ean": "7896071010000"
-  },
-  {
-    "codprod": "2800",
-    "descricao": "GSA SANDELLA TEMPERO EM PO LEGUMES 50G",
-    "qt_unid": "483",
-    "preco_unidade": "2.59",
-    "qt_master": "10.0625",
-    "ean": "7896071018166"
-  },
-  {
-    "codprod": "2792",
-    "descricao": "GSA SANDELLA SOPAO GAL CAIPIRA/LEG 180GR",
-    "qt_unid": "230",
-    "preco_unidade": "4.97",
-    "qt_master": "9.583333333333334",
-    "ean": "7898514350123"
-  },
-  {
-    "codprod": "6103",
-    "descricao": "ITAMARATY WAFER ATREVIDOS NAPOLITANO 80G",
-    "qt_unid": "450",
-    "preco_unidade": "1.68",
-    "qt_master": "9",
-    "ean": "7891340365583"
-  },
-  {
-    "codprod": "2791",
-    "descricao": "GSA SANDELLA SOPAO CARNE/LEGUMES 180GR",
-    "qt_unid": "211",
-    "preco_unidade": "4.97",
-    "qt_master": "8.791666666666666",
-    "ean": "7898514350130"
-  },
-  {
-    "codprod": "6211",
-    "descricao": "DOCILE MAXMALLOWS PISTACHE 150GR",
-    "qt_unid": "174",
-    "preco_unidade": "6.06",
-    "qt_master": "8.7",
-    "ean": "7896451928221"
-  },
-  {
-    "codprod": "3836",
-    "descricao": "DOCILE GELATINES MINI BEIJO 15G",
-    "qt_unid": "99",
-    "preco_unidade": "11.32",
-    "qt_master": "8.25",
-    "ean": "7896451912930"
-  },
-  {
-    "codprod": "3799",
-    "descricao": "DOCILE MINI SINO EUCALIPTO DP C/24 18G",
-    "qt_unid": "98",
-    "preco_unidade": "18.02",
-    "qt_master": "8.166666666666666",
-    "ean": "7896451918598"
-  },
-  {
-    "codprod": "6105",
-    "descricao": "ITAMARATY WAFER ATREVIDOS CHOC BRANC 80G",
-    "qt_unid": "400",
-    "preco_unidade": "1.68",
-    "qt_master": "8",
-    "ean": "7891340365606"
-  },
-  {
-    "codprod": "6208",
-    "descricao": "DOCILE DOCIGOMA FORMATO MIX AZE SM 90GR",
-    "qt_unid": "236",
-    "preco_unidade": "2.86",
-    "qt_master": "7.866666666666666",
-    "ean": "7896451928184"
-  },
-  {
-    "codprod": "5407",
-    "descricao": "DOCILE CANUDINHO VASS DE BRUXA 12PC 15G",
-    "qt_unid": "89",
-    "preco_unidade": "11.32",
-    "qt_master": "7.416666666666667",
-    "ean": "7896451923479"
-  },
-  {
-    "codprod": "6156",
-    "descricao": "RANDON VINHO TINTO SECO CABERNET SAV 750",
-    "qt_unid": "44",
-    "preco_unidade": "20.68",
-    "qt_master": "7.333333333333333",
-    "ean": "7896741649362"
-  },
-  {
-    "codprod": "5189",
-    "descricao": "GSA SANDELLA MISTURA BOLO CHOCOLATE 350G",
-    "qt_unid": "86",
-    "preco_unidade": "4.43",
-    "qt_master": "7.166666666666667",
-    "ean": "7896071018612"
-  },
-  {
-    "codprod": "6154",
-    "descricao": "RANDON VINHO TINTO SECO FIN MERLOT 750ML",
-    "qt_unid": "43",
-    "preco_unidade": "20.68",
-    "qt_master": "7.166666666666667",
-    "ean": "7896741683700"
-  },
-  {
-    "codprod": "3810",
-    "descricao": "DOCILE TANDY REFRESCO ABACAXI 25G",
-    "qt_unid": "57",
-    "preco_unidade": "10.72",
-    "qt_master": "7.125",
-    "ean": "7896451904843"
-  },
-  {
-    "codprod": "6157",
-    "descricao": "RANDON ESPUMANTE NIAGARA 750ML",
-    "qt_unid": "42",
-    "preco_unidade": "28.35",
-    "qt_master": "7",
-    "ean": "7896741687623"
-  },
-  {
-    "codprod": "6083",
-    "descricao": "ITAMARATY ATREVIDOS RECH NAPOLITANO 90G",
-    "qt_unid": "180",
-    "preco_unidade": "1.88",
-    "qt_master": "6",
-    "ean": "7891340365286"
-  },
-  {
-    "codprod": "6088",
-    "descricao": "ITAMARATY SPANTOOO MINI CHOC BRANCO 30G",
-    "qt_unid": "270",
-    "preco_unidade": "0.7",
-    "qt_master": "6",
-    "ean": "7891340365453"
-  },
-  {
-    "codprod": "6155",
-    "descricao": "RANDON VINHO BCO SECO MOSC GIALLO 750ML",
-    "qt_unid": "36",
-    "preco_unidade": "20.68",
-    "qt_master": "6",
-    "ean": "7896741683908"
-  },
-  {
-    "codprod": "5890",
-    "descricao": "AUDAZ POP LITO AZELITO REFRI DP C/24",
-    "qt_unid": "70",
-    "preco_unidade": "1.176",
-    "qt_master": "5.83333333333333",
-    "ean": "7898656683333"
-  },
-  {
-    "codprod": "6177",
-    "descricao": "FAMPAR BOLHA TCHUCO TCHUCO ANIMA C/12 UN",
-    "qt_unid": "23",
-    "preco_unidade": "1.176",
-    "qt_master": "5.75",
-    "ean": "7908274801183"
-  },
-  {
-    "codprod": "5991",
-    "descricao": "DOCILE GOMA DE MASCAR TUTTI SORT 250G",
-    "qt_unid": "112",
-    "preco_unidade": "14.2",
-    "qt_master": "5.6",
-    "ean": "7896451922496"
-  },
-  {
-    "codprod": "5995",
-    "descricao": "AUDAZ BRINCLET'S BALLS DP C/24",
-    "qt_unid": "65",
-    "preco_unidade": "1.176",
-    "qt_master": "5.41666666666667",
-    "ean": "7898656686241"
-  },
-  {
-    "codprod": "5992",
-    "descricao": "DOCILE BIG CANUD DINO COL F AZE 24 X 26G",
-    "qt_unid": "32",
-    "preco_unidade": "35.2",
-    "qt_master": "5.333333333333333",
-    "ean": "7896451925589"
-  },
-  {
-    "codprod": "6158",
-    "descricao": "RANDON ESPUMANTE MOSCATEL 750ML",
-    "qt_unid": "32",
-    "preco_unidade": "29.77",
-    "qt_master": "5.333333333333333",
-    "ean": "7896741686909"
-  },
-  {
-    "codprod": "4194",
-    "descricao": "GSA SANDELLA SOPAO CARNE C LEGUMES 90G",
-    "qt_unid": "60",
-    "preco_unidade": "2.99",
-    "qt_master": "5",
-    "ean": "7898514352073"
-  },
-  {
-    "codprod": "6104",
-    "descricao": "ITAMARATY WAFER ATREVIDOS BRIGADEIRO 80G",
-    "qt_unid": "250",
-    "preco_unidade": "1.68",
-    "qt_master": "5",
-    "ean": "7891340365590"
-  },
-  {
-    "codprod": "6160",
-    "descricao": "RANDON VINHO FRISANTE GAS ROSE SUAVE 750",
-    "qt_unid": "30",
-    "preco_unidade": "17.87",
-    "qt_master": "5",
-    "ean": "7896741693594"
-  },
-  {
-    "codprod": "5988",
-    "descricao": "DOCILE DOCIGOMA EM FORMATO PICOLE 190G",
-    "qt_unid": "172",
-    "preco_unidade": "3.98",
-    "qt_master": "4.777777777777778",
-    "ean": "7896451925534"
-  },
-  {
-    "codprod": "6232",
-    "descricao": "GSA SANDELLA TEMPERO EM PO FEIJAO 50G",
-    "qt_unid": "222",
-    "preco_unidade": "2.59",
-    "qt_master": "4.625",
-    "ean": "7896225743258"
-  },
-  {
-    "codprod": "6179",
-    "descricao": "FAMPAR BOLHA POP C/12 UN",
-    "qt_unid": "35",
-    "preco_unidade": "1.176",
-    "qt_master": "4.375",
-    "ean": "7898656685329"
-  },
-  {
-    "codprod": "6159",
-    "descricao": "RANDON ESPUMANTE MOSCATEL ROSE 750ML",
-    "qt_unid": "26",
-    "preco_unidade": "28.35",
-    "qt_master": "4.333333333333333",
-    "ean": "7896741693211"
-  },
-  {
-    "codprod": "6230",
-    "descricao": "GSA SANDELLA TEMPERO EM PO AVES 50G",
-    "qt_unid": "203",
-    "preco_unidade": "2.59",
-    "qt_master": "4.229166666666667",
-    "ean": "7896225743227"
-  },
-  {
-    "codprod": "6090",
-    "descricao": "ITAMARATY SPANTOOO MINI MORANGO 30G",
-    "qt_unid": "180",
-    "preco_unidade": "0.7",
-    "qt_master": "4",
-    "ean": "7891340365446"
-  },
-  {
-    "codprod": "5342",
-    "descricao": "AUDAZ POP LITO BEIJINHO NIGHT 10G",
-    "qt_unid": "47",
-    "preco_unidade": "1.176",
-    "qt_master": "3.91666666666667",
-    "ean": "7898656685411"
-  },
-  {
-    "codprod": "5160",
-    "descricao": "AUDAZ POP LITO EXP PRINCESA 11G",
-    "qt_unid": "70",
-    "preco_unidade": "1.176",
-    "qt_master": "3.88888888888889",
-    "ean": "7898656685114"
-  },
-  {
-    "codprod": "6174",
-    "descricao": "AUDAZ BRINCLET'S AZEDINHO TROPIC DP C/24",
-    "qt_unid": "57",
-    "preco_unidade": "1.176",
-    "qt_master": "3.8",
-    "ean": "7898656685909"
-  },
-  {
-    "codprod": "6165",
-    "descricao": "AUDAZ BRINCLET'S TIRA FRUTAS DP C/24",
-    "qt_unid": "55",
-    "preco_unidade": "1.176",
-    "qt_master": "3.66666666666667",
-    "ean": "7898656685862"
-  },
-  {
-    "codprod": "5893",
-    "descricao": "FAMPAR OVO SUPER M PONEY DP C/12",
-    "qt_unid": "22",
-    "preco_unidade": "1.176",
-    "qt_master": "3.66666666666667",
-    "ean": "7898405067444"
-  },
-  {
-    "codprod": "2710",
-    "descricao": "DOCILE MAXMALLOWS TWIST COLOR 1 BAUN 50G",
-    "qt_unid": "44",
-    "preco_unidade": "4.57",
-    "qt_master": "3.6666666666666665",
-    "ean": "7896451909213"
-  },
-  {
-    "codprod": "5162",
-    "descricao": "AUDAZ POP LITO BEIJINHO P. LINGUA 11G",
-    "qt_unid": "63",
-    "preco_unidade": "1.176",
-    "qt_master": "3.5",
-    "ean": "7898656685176"
-  },
-  {
-    "codprod": "4763",
-    "descricao": "FAMPAR OVO SURPRESA FASHION GIRL C/18",
-    "qt_unid": "21",
-    "preco_unidade": "1.176",
-    "qt_master": "3.5",
-    "ean": "7898405064290"
-  },
-  {
-    "codprod": "5163",
-    "descricao": "AUDAZ POP LITO CARROS P. LINGUA 11G",
-    "qt_unid": "61",
-    "preco_unidade": "1.176",
-    "qt_master": "3.38888888888889",
-    "ean": "7898656685206"
-  },
-  {
-    "codprod": "4235",
-    "descricao": "DOCILE BALA GOMA TUBO SORT 14GR C/5",
-    "qt_unid": "70",
-    "preco_unidade": "13.62",
-    "qt_master": "3.3333333333333335",
-    "ean": "7896451911919"
-  },
-  {
-    "codprod": "5868",
-    "descricao": "FAMPAR OVO SURPRESA DINOSSAURO C/18",
-    "qt_unid": "19",
-    "preco_unidade": "1.176",
-    "qt_master": "3.16666666666667",
-    "ean": "7898405063921"
-  },
-  {
-    "codprod": "2796",
-    "descricao": "GSA SANDELLA TEMPERO COMPL S/PIMENT 300G",
-    "qt_unid": "76",
-    "preco_unidade": "2.54",
-    "qt_master": "3.1666666666666665",
-    "ean": "7896071018388"
-  },
-  {
-    "codprod": "5124",
-    "descricao": "B UNIAO CONF. MAMA MANIA FRUTAS C/ 10",
-    "qt_unid": "78",
-    "preco_unidade": "1.176",
-    "qt_master": "3",
-    "ean": "7898656681581"
-  },
-  {
-    "codprod": "4734",
-    "descricao": "B UNIAO CONFEITO CLICK LOVE C/ 9",
-    "qt_unid": "18",
-    "preco_unidade": "1.176",
-    "qt_master": "3",
-    "ean": "7898405066355"
-  },
-  {
-    "codprod": "5176",
-    "descricao": "B UNIAO FLAUTA POP C/15",
-    "qt_unid": "35",
-    "preco_unidade": "1.176",
-    "qt_master": "2.91666666666667",
-    "ean": "7898405062760"
-  },
-  {
-    "codprod": "4931",
-    "descricao": "DOCILE DOCIGOMA MINHOC AZEDI 900G",
-    "qt_unid": "29",
-    "preco_unidade": "15.62",
-    "qt_master": "2.9",
-    "ean": "7896451916037"
-  },
-  {
-    "codprod": "6200",
-    "descricao": "FAMPAR CARROS DE METAL BATE E PULA C/24",
-    "qt_unid": "17",
-    "preco_unidade": "1.176",
-    "qt_master": "2.83333333333333",
-    "ean": "7908274801930"
-  },
-  {
-    "codprod": "5867",
-    "descricao": "FAMPAR OVO SURPRESA CARRINHOS C/18",
-    "qt_unid": "16",
-    "preco_unidade": "1.176",
-    "qt_master": "2.66666666666667",
-    "ean": "7898405063990"
-  },
-  {
-    "codprod": "5993",
-    "descricao": "AUDAZ BRINCLET'S FRUTAS DP C/24",
-    "qt_unid": "30",
-    "preco_unidade": "1.176",
-    "qt_master": "2.5",
-    "ean": "7898656686180"
-  },
-  {
-    "codprod": "5182",
-    "descricao": "B UNIAO DINOSSAURO REX APITO C/15",
-    "qt_unid": "30",
-    "preco_unidade": "1.176",
-    "qt_master": "2.5",
-    "ean": "7898405067956"
-  },
-  {
-    "codprod": "5161",
-    "descricao": "AUDAZ POP LITO EXP DINO 11G",
-    "qt_unid": "44",
-    "preco_unidade": "1.176",
-    "qt_master": "2.44444444444444",
-    "ean": "7898656685145"
-  },
-  {
-    "codprod": "5892",
-    "descricao": "FAMPAR PIRULITO TOP FLASH MICRF DP C/18",
-    "qt_unid": "19",
-    "preco_unidade": "1.176",
-    "qt_master": "2.375",
-    "ean": "7898405065099"
-  },
-  {
-    "codprod": "2488",
-    "descricao": "DOCILE DOCIGOMA TUBO GURT 30GR C/30",
-    "qt_unid": "28",
-    "preco_unidade": "23.45",
-    "qt_master": "2.3333333333333335",
-    "ean": "7896451911704"
-  },
-  {
-    "codprod": "5406",
-    "descricao": "FAMPAR OVO BLOCO VEIC DE GUERRA C/06",
-    "qt_unid": "14",
-    "preco_unidade": "1.176",
-    "qt_master": "2.33333333333333",
-    "ean": "7908274800247"
-  },
-  {
-    "codprod": "5131",
-    "descricao": "FAMPAR SUPER MOLA TRADICIONAL C/ 12",
-    "qt_unid": "14",
-    "preco_unidade": "1.176",
-    "qt_master": "2.33333333333333",
-    "ean": "7898405060353"
-  },
-  {
-    "codprod": "5869",
-    "descricao": "FAMPAR OVO SUPER DINOSSAURO TOY C/12",
-    "qt_unid": "13",
-    "preco_unidade": "1.176",
-    "qt_master": "2.16666666666667",
-    "ean": "7898405067760"
-  },
-  {
-    "codprod": "6217",
-    "descricao": "DOCILE DROPS ROLLY MINT CEREJA 29G C/12",
-    "qt_unid": "60",
-    "preco_unidade": "12.1",
-    "qt_master": "2",
-    "ean": "7896451929365"
-  },
-  {
-    "codprod": "6082",
-    "descricao": "ITAMARATY ATREVIDOS RECH CHOC BRANCO 90G",
-    "qt_unid": "60",
-    "preco_unidade": "1.88",
-    "qt_master": "2",
-    "ean": "7891340365279"
-  },
-  {
-    "codprod": "6212",
-    "descricao": "RANDON HITS POWER MACA VERDE LT 473ML",
-    "qt_unid": "24",
-    "preco_unidade": "4.99",
-    "qt_master": "2",
-    "ean": "7898126631542"
-  },
-  {
-    "codprod": "6219",
-    "descricao": "RANDON VINHO TINTO SUAVE VD 750 ML",
-    "qt_unid": "12",
-    "preco_unidade": "14.68",
-    "qt_master": "2",
-    "ean": "7896741687227"
-  },
-  {
-    "codprod": "6119",
-    "descricao": "AUDAZ GUMMY MANIA E DIVERSAO C/20UN",
-    "qt_unid": "16",
-    "preco_unidade": "1.176",
-    "qt_master": "2",
-    "ean": "7898656686784"
-  },
-  {
-    "codprod": "4749",
-    "descricao": "B UNIAO CATAVENTO MEGATOY CONFEITOS C/15",
-    "qt_unid": "8",
-    "preco_unidade": "1.176",
-    "qt_master": "2",
-    "ean": "7898405064085"
-  },
-  {
-    "codprod": "5178",
-    "descricao": "B UNIAO PULSEIRA CATAVENTO C/15",
-    "qt_unid": "23",
-    "preco_unidade": "1.176",
-    "qt_master": "1.91666666666667",
-    "ean": "7898405067642"
-  },
-  {
-    "codprod": "5996",
-    "descricao": "AUDAZ GUMMY MANIA DINO DP C/20UN",
-    "qt_unid": "15",
-    "preco_unidade": "1.176",
-    "qt_master": "1.875",
-    "ean": "7898656686302"
-  },
-  {
-    "codprod": "5870",
-    "descricao": "FAMPAR COSPE SLIME STILEKA DISPLAY C/12",
-    "qt_unid": "11",
-    "preco_unidade": "1.176",
-    "qt_master": "1.83333333333333",
-    "ean": "7898405067761"
-  },
-  {
-    "codprod": "6118",
-    "descricao": "AUDAZ GUMMY MANIA SAPO DP C/20UN",
-    "qt_unid": "14",
-    "preco_unidade": "1.176",
-    "qt_master": "1.75",
-    "ean": "7898656686272"
-  },
-  {
-    "codprod": "5146",
-    "descricao": "DOCILE MAXMALLOWS PIPOCA 150GR",
-    "qt_unid": "34",
-    "preco_unidade": "6.06",
-    "qt_master": "1.7",
-    "ean": "7896451922489"
-  },
-  {
-    "codprod": "6168",
-    "descricao": "AUDAZ BRINCLET'S OVO DINO DP C/24",
-    "qt_unid": "20",
-    "preco_unidade": "1.176",
-    "qt_master": "1.66666666666667",
-    "ean": "78968656686869"
-  },
-  {
-    "codprod": "5886",
-    "descricao": "AUDAZ PIRULITO AZE MOLA DP C/24",
-    "qt_unid": "10",
-    "preco_unidade": "1.176",
-    "qt_master": "1.66666666666667",
-    "ean": "7898656685508"
-  },
-  {
-    "codprod": "5877",
-    "descricao": "FAMPAR CONFEITO CAVALINHO PULA C/10",
-    "qt_unid": "10",
-    "preco_unidade": "1.176",
-    "qt_master": "1.66666666666667",
-    "ean": "7898405068199"
-  },
-  {
-    "codprod": "6184",
-    "descricao": "FAMPAR CONFEITO LANCA PIAO DP C/9",
-    "qt_unid": "10",
-    "preco_unidade": "1.176",
-    "qt_master": "1.66666666666667",
-    "ean": "7908274801893"
-  },
-  {
-    "codprod": "4751",
-    "descricao": "FAMPAR CONFEITO TCHUCO TCHUCO",
-    "qt_unid": "10",
-    "preco_unidade": "1.176",
-    "qt_master": "1.66666666666667",
-    "ean": "7898405066140"
-  },
-  {
-    "codprod": "5849",
-    "descricao": "GSA SANDELLA MISTURA BOLO LARANJA 350G",
-    "qt_unid": "20",
-    "preco_unidade": "4.43",
-    "qt_master": "1.6666666666666667",
-    "ean": "7896071018661"
-  },
-  {
-    "codprod": "5994",
-    "descricao": "AUDAZ BRINCLET'S MELANCIA DP C/24",
-    "qt_unid": "19",
-    "preco_unidade": "1.176",
-    "qt_master": "1.58333333333333",
-    "ean": "78968656686210"
-  },
-  {
-    "codprod": "4753",
-    "descricao": "FAMPAR CONFEITO MAMA FEST SORT UNI C/12",
-    "qt_unid": "19",
-    "preco_unidade": "1.176",
-    "qt_master": "1.58333333333333",
-    "ean": "7898656683950"
-  },
-  {
-    "codprod": "5336",
-    "descricao": "AUDAZ PIRULITO AZE FLASH C/24",
-    "qt_unid": "18",
-    "preco_unidade": "1.176",
-    "qt_master": "1.5",
-    "ean": "7898656685442"
-  },
-  {
-    "codprod": "4776",
-    "descricao": "B UNIAO TCHUCO TCHUCO BOLHA",
-    "qt_unid": "9",
-    "preco_unidade": "1.176",
-    "qt_master": "1.5",
-    "ean": "7898405063781"
-  },
-  {
-    "codprod": "5875",
-    "descricao": "AUDAZ BALA LIQUIDA SPRAY KIDS C/12",
-    "qt_unid": "17",
-    "preco_unidade": "1.176",
-    "qt_master": "1.41666666666667",
-    "ean": "7898656684698"
-  },
-  {
-    "codprod": "6172",
-    "descricao": "AUDAZ BRINCLETS CARTELA PRINCESAS C/15",
-    "qt_unid": "17",
-    "preco_unidade": "1.176",
-    "qt_master": "1.41666666666667",
-    "ean": "7898656685961"
-  },
-  {
-    "codprod": "6231",
-    "descricao": "GSA SANDELLA TEMPERO EM PO CARNE 50G",
-    "qt_unid": "68",
-    "preco_unidade": "2.59",
-    "qt_master": "1.4166666666666667",
-    "ean": "7896225743234"
-  },
-  {
-    "codprod": "2795",
-    "descricao": "GSA SANDELLA TEMPERO COMPL C/PIMENT 300G",
-    "qt_unid": "33",
-    "preco_unidade": "2.54",
-    "qt_master": "1.375",
-    "ean": "7896071018401"
-  },
-  {
-    "codprod": "3834",
-    "descricao": "DOCILE CANUDINHO GREGO DP 12PC DE 15G",
-    "qt_unid": "16",
-    "preco_unidade": "11.32",
-    "qt_master": "1.3333333333333333",
-    "ean": "7896451914576"
-  },
-  {
-    "codprod": "6117",
-    "descricao": "AUDAZ GUMMY MANIA AZEDINHO  DP C/40UN",
-    "qt_unid": "16",
-    "preco_unidade": "1.176",
-    "qt_master": "1.33333333333333",
-    "ean": "7898656686364"
-  },
-  {
-    "codprod": "5040",
-    "descricao": "FAMPAR STILEKA OVO SURPRESA ZOO C/12",
-    "qt_unid": "8",
-    "preco_unidade": "1.176",
-    "qt_master": "1.33333333333333",
-    "ean": "7898405065365"
-  },
-  {
-    "codprod": "2819",
-    "descricao": "DOCILE MAXMALLOWS TWIST AZUL/BRANCO 250G",
-    "qt_unid": "15",
-    "preco_unidade": "10.26",
-    "qt_master": "1.25",
-    "ean": "7896451910202"
-  },
-  {
-    "codprod": "2794",
-    "descricao": "GSA SANDELLA TEMPERO COMPL ALHO/SAL 300G",
-    "qt_unid": "30",
-    "preco_unidade": "2.54",
-    "qt_master": "1.25",
-    "ean": "7896071018364"
-  },
-  {
-    "codprod": "4787",
-    "descricao": "DOCILE MAXMALLOW TWIST COLOR UNI 15G",
-    "qt_unid": "28",
-    "preco_unidade": "1.67",
-    "qt_master": "1.1666666666666667",
-    "ean": "7896451913890"
-  },
-  {
-    "codprod": "5164",
-    "descricao": "AUDAZ POP LITO GIRA GIRA FRUTA 10G C/ 20",
-    "qt_unid": "9",
-    "preco_unidade": "1.176",
-    "qt_master": "1.125",
-    "ean": "7898656685084"
-  },
-  {
-    "codprod": "5405",
-    "descricao": "AUDAZ POP LITO EXPL UNICORNIO C/15 11G",
-    "qt_unid": "19",
-    "preco_unidade": "1.176",
-    "qt_master": "1.05555555555556",
-    "ean": "7898656685718"
-  },
-  {
-    "codprod": "3877",
-    "descricao": "GSA REFRESKANT DISPLAY GOIABA 25G",
-    "qt_unid": "10",
-    "preco_unidade": "12.37",
-    "qt_master": "1",
-    "ean": "7896071019339"
-  },
-  {
-    "codprod": "6084",
-    "descricao": "ITAMARATY ATREVIDOS RECH BRIGADEIRO 90G",
-    "qt_unid": "30",
-    "preco_unidade": "1.88",
-    "qt_master": "1",
-    "ean": "7891340365262"
-  },
-  {
-    "codprod": "6147",
-    "descricao": "RANDON STEMPEL WHITE VD 355ML",
-    "qt_unid": "6",
-    "preco_unidade": "5.46",
-    "qt_master": "1",
-    "ean": "7896741650535"
-  },
-  {
-    "codprod": "6226",
-    "descricao": "AUDAZ PIRULITO STICALITO DP C/20",
-    "qt_unid": "12",
-    "preco_unidade": "1.176",
-    "qt_master": "1",
-    "ean": "7898656689999"
-  },
-  {
-    "codprod": "5891",
-    "descricao": "AUDAZ POP LITO OLHO CABO LUMI DP C/24",
-    "qt_unid": "12",
-    "preco_unidade": "1.176",
-    "qt_master": "1",
-    "ean": "7898656685930"
-  },
-  {
-    "codprod": "5866",
-    "descricao": "B UNIAO CONFEITO MAMA FEST ROSA DP C/12",
-    "qt_unid": "12",
-    "preco_unidade": "1.176",
-    "qt_master": "1",
-    "ean": "7898656683960"
-  },
-  {
-    "codprod": "6176",
-    "descricao": "FAMPAR BOLHA LANCA AGUA C/20 UN",
-    "qt_unid": "6",
-    "preco_unidade": "1.176",
-    "qt_master": "1",
-    "ean": "7908274801244"
-  },
-  {
-    "codprod": "6194",
-    "descricao": "FAMPAR COLECAO MONSTER TRUCK  OFF DP C/6",
-    "qt_unid": "6",
-    "preco_unidade": "1.176",
-    "qt_master": "1",
-    "ean": "7908274800582"
-  },
-  {
-    "codprod": "6196",
-    "descricao": "FAMPAR COLECAO MONSTER TRUCK MAQI DP C/6",
-    "qt_unid": "6",
-    "preco_unidade": "1.176",
-    "qt_master": "1",
-    "ean": "7908274801855"
-  },
-  {
-    "codprod": "6178",
-    "descricao": "FAMPAR OVO BLOCO DINO DP  C/06",
-    "qt_unid": "6",
-    "preco_unidade": "1.176",
-    "qt_master": "1",
-    "ean": "7908274800999"
-  },
-  {
-    "codprod": "5127",
-    "descricao": "FAMPAR OVO SURPRESA DINO DO GELO C/12",
-    "qt_unid": "6",
-    "preco_unidade": "1.176",
-    "qt_master": "1",
-    "ean": "7898405067550"
-  },
-  {
-    "codprod": "6185",
-    "descricao": "FAMPAR PIAO MANIA DP C/12UN",
-    "qt_unid": "6",
-    "preco_unidade": "1.176",
-    "qt_master": "1",
-    "ean": "7898405061114"
-  },
-  {
-    "codprod": "5871",
-    "descricao": "FAMPAR STILEKA SLIME POTE DUO DP C/18",
-    "qt_unid": "6",
-    "preco_unidade": "1.176",
-    "qt_master": "1",
-    "ean": "7898405067766"
-  },
-  {
-    "codprod": "6192",
-    "descricao": "FAMPAR UNICORNIO MACIO C/12 UN",
-    "qt_unid": "6",
-    "preco_unidade": "1.176",
-    "qt_master": "1",
-    "ean": "7908274800520"
-  },
-  {
-    "codprod": "2569",
-    "descricao": "DOCILE DROPS ROLLY MINT FRUIT 29GR C/16",
-    "qt_unid": "22",
-    "preco_unidade": "15.31",
-    "qt_master": "0.9166666666666666",
-    "ean": "7896451907677"
-  },
-  {
-    "codprod": "2816",
-    "descricao": "DOCILE BALA DOCIGOMA SINO SORT 1KG",
-    "qt_unid": "9",
-    "preco_unidade": "16.23",
-    "qt_master": "0.9",
-    "ean": "7896451900562"
-  },
-  {
-    "codprod": "2568",
-    "descricao": "DOCILE DROPS ROLLY MINT EXT FORT 29GC/16",
-    "qt_unid": "21",
-    "preco_unidade": "15.31",
-    "qt_master": "0.875",
-    "ean": "7896451907196"
-  },
-  {
-    "codprod": "6182",
-    "descricao": "FAMPAR CONFEITO URSINHO EQUI DP C/12",
-    "qt_unid": "7",
-    "preco_unidade": "1.176",
-    "qt_master": "0.875",
-    "ean": "7898405066058"
-  },
-  {
-    "codprod": "4744",
-    "descricao": "B UNIAO POP GAME C/ 15",
-    "qt_unid": "10",
-    "preco_unidade": "1.176",
-    "qt_master": "0.833333333333333",
-    "ean": "7898405063491"
-  },
-  {
-    "codprod": "4755",
-    "descricao": "FAMPAR CONFEITO MAMA MANIA C/20",
-    "qt_unid": "10",
-    "preco_unidade": "1.176",
-    "qt_master": "0.833333333333333",
-    "ean": "7898656681567"
-  },
-  {
-    "codprod": "5874",
-    "descricao": "FAMPAR CONFEITO ROBO COM LUZ DP C/9",
-    "qt_unid": "5",
-    "preco_unidade": "1.176",
-    "qt_master": "0.833333333333333",
-    "ean": "7898405060953"
-  },
-  {
-    "codprod": "6197",
-    "descricao": "FAMPAR DINO DE JOG DP C/8",
-    "qt_unid": "5",
-    "preco_unidade": "1.176",
-    "qt_master": "0.833333333333333",
-    "ean": "7908274801916"
-  },
-  {
-    "codprod": "3832",
-    "descricao": "DOCILE CANUDINHO MORANGO DP 12PC DE 15G",
-    "qt_unid": "9",
-    "preco_unidade": "11.32",
-    "qt_master": "0.75",
-    "ean": "7896451912817"
-  },
-  {
-    "codprod": "4748",
-    "descricao": "B UNIAO CONFEITO OVINHO MANIA C/ 12",
-    "qt_unid": "12",
-    "preco_unidade": "1.176",
-    "qt_master": "0.75",
-    "ean": "7898656681673"
-  },
-  {
-    "codprod": "6198",
-    "descricao": "FAMPAR SUPER CARROS DP C/9",
-    "qt_unid": "3",
-    "preco_unidade": "1.176",
-    "qt_master": "0.75",
-    "ean": "7908274801879"
-  },
-  {
-    "codprod": "6171",
-    "descricao": "AUDAZ BRINCLETS CARTELA DINO C/15",
-    "qt_unid": "8",
-    "preco_unidade": "1.176",
-    "qt_master": "0.666666666666667",
-    "ean": "7898656685992"
-  },
-  {
-    "codprod": "5338",
-    "descricao": "AUDAZ PIRULITO AZE BOCA DENTUCO C/24",
-    "qt_unid": "4",
-    "preco_unidade": "1.176",
-    "qt_master": "0.666666666666667",
-    "ean": "7898656685596"
-  },
-  {
-    "codprod": "6188",
-    "descricao": "FAMPAR CARRINHOS DINO BABY DP C/6",
-    "qt_unid": "4",
-    "preco_unidade": "1.176",
-    "qt_master": "0.666666666666667",
-    "ean": "7898405067888"
-  },
-  {
-    "codprod": "6186",
-    "descricao": "FAMPAR COLECAO MONSTER TRUCK DP C/6",
-    "qt_unid": "4",
-    "preco_unidade": "1.176",
-    "qt_master": "0.666666666666667",
-    "ean": "7898405065402"
-  },
-  {
-    "codprod": "6180",
-    "descricao": "FAMPAR CONFEITO BASKET DP C/12",
-    "qt_unid": "4",
-    "preco_unidade": "1.176",
-    "qt_master": "0.666666666666667",
-    "ean": "7898405063224"
-  },
-  {
-    "codprod": "5873",
-    "descricao": "FAMPAR CONFEITO DINOSSAURO PULA PULA C/9",
-    "qt_unid": "4",
-    "preco_unidade": "1.176",
-    "qt_master": "0.666666666666667",
-    "ean": "7898405060950"
-  },
-  {
-    "codprod": "6190",
-    "descricao": "FAMPAR CONFEITO PEGA PEGA JACARE C/12",
-    "qt_unid": "4",
-    "preco_unidade": "1.176",
-    "qt_master": "0.666666666666667",
-    "ean": "7898405060216"
-  },
-  {
-    "codprod": "6181",
-    "descricao": "FAMPAR CONFEITO SOCO SOCO DP C/12",
-    "qt_unid": "4",
-    "preco_unidade": "1.176",
-    "qt_master": "0.666666666666667",
-    "ean": "7898405063163"
-  },
-  {
-    "codprod": "5876",
-    "descricao": "FAMPAR CONFEITO UNICORNI COM LUZ DP C/9",
-    "qt_unid": "4",
-    "preco_unidade": "1.176",
-    "qt_master": "0.666666666666667",
-    "ean": "7898405066003"
-  },
-  {
-    "codprod": "6189",
-    "descricao": "FAMPAR CUBO MAGICO DP C/12 UN",
-    "qt_unid": "4",
-    "preco_unidade": "1.176",
-    "qt_master": "0.666666666666667",
-    "ean": "7898405067918"
-  },
-  {
-    "codprod": "6199",
-    "descricao": "FAMPAR CUTY TOYS UNICORNIO C/12",
-    "qt_unid": "4",
-    "preco_unidade": "1.176",
-    "qt_master": "0.666666666666667",
-    "ean": "7908274801381"
-  },
-  {
-    "codprod": "6183",
-    "descricao": "FAMPAR PISTOLA DE AGUA CANDY DP C/12",
-    "qt_unid": "4",
-    "preco_unidade": "1.176",
-    "qt_master": "0.666666666666667",
-    "ean": "789840506816"
-  },
-  {
-    "codprod": "6191",
-    "descricao": "FAMPAR URSO MACIO COM LUZ C/12 UN",
-    "qt_unid": "4",
-    "preco_unidade": "1.176",
-    "qt_master": "0.666666666666667",
-    "ean": "7898405069127"
-  },
-  {
-    "codprod": "5253",
-    "descricao": "DOCILE GELATINA MIX 1KG",
-    "qt_unid": "8",
-    "preco_unidade": "36.25",
-    "qt_master": "0.6666666666666666",
-    "ean": "7896451922694"
-  },
-  {
-    "codprod": "4248",
-    "descricao": "DOCILE GELATINES BEIJO INST 1KG",
-    "qt_unid": "6",
-    "preco_unidade": "36.25",
-    "qt_master": "0.6",
-    "ean": "7896451910547"
-  },
-  {
-    "codprod": "4237",
-    "descricao": "DOCILE BALA GELATINNES BANANA 1KG",
-    "qt_unid": "7",
-    "preco_unidade": "36.25",
-    "qt_master": "0.5833333333333334",
-    "ean": "7896451910424"
-  },
-  {
-    "codprod": "6166",
-    "descricao": "AUDAZ BALA LIQUIDA SPRAY ICE C/12",
-    "qt_unid": "7",
-    "preco_unidade": "1.176",
-    "qt_master": "0.583333333333333",
-    "ean": "7898656684759"
-  },
-  {
-    "codprod": "4710",
-    "descricao": "DOCILE MINTY MORANGO AZED S ACUCAR 21G",
-    "qt_unid": "3",
-    "preco_unidade": "58.18",
-    "qt_master": "0.5",
-    "ean": "7896451918055"
-  },
-  {
-    "codprod": "3816",
-    "descricao": "DOCILE TANDY REFRESCOSALADA DE FRUTA 25G",
-    "qt_unid": "4",
-    "preco_unidade": "10.72",
-    "qt_master": "0.5",
-    "ean": "7896451908841"
-  },
-  {
-    "codprod": "6173",
-    "descricao": "AUDAZ BRINCLETS CARTELA SORTIDO C/15",
-    "qt_unid": "6",
-    "preco_unidade": "1.176",
-    "qt_master": "0.5",
-    "ean": "7898656686029"
-  },
-  {
-    "codprod": "5177",
-    "descricao": "B UNIAO BIKE POP CONFEITO C/15",
-    "qt_unid": "6",
-    "preco_unidade": "1.176",
-    "qt_master": "0.5",
-    "ean": "7898405062937"
-  },
-  {
-    "codprod": "4747",
-    "descricao": "B UNIAO RELOGINHO C/15",
-    "qt_unid": "6",
-    "preco_unidade": "1.176",
-    "qt_master": "0.5",
-    "ean": "7898405062678"
-  },
-  {
-    "codprod": "4802",
-    "descricao": "FAMPAR CARRINHOS BABY MANIA C/8",
-    "qt_unid": "4",
-    "preco_unidade": "1.176",
-    "qt_master": "0.5",
-    "ean": "7898405060575"
-  },
-  {
-    "codprod": "6193",
-    "descricao": "FAMPAR CONFEITO BASKET C/ LUZ E SOM C/9",
-    "qt_unid": "3",
-    "preco_unidade": "1.176",
-    "qt_master": "0.5",
-    "ean": "7898405062326"
-  },
-  {
-    "codprod": "5878",
-    "descricao": "FAMPAR CONFEITO PATO DE FONE PULA C/9",
-    "qt_unid": "3",
-    "preco_unidade": "1.176",
-    "qt_master": "0.5",
-    "ean": "7908274800292"
-  },
-  {
-    "codprod": "6187",
-    "descricao": "FAMPAR LANCA AGUA DP C/09 UN",
-    "qt_unid": "3",
-    "preco_unidade": "1.176",
-    "qt_master": "0.5",
-    "ean": "7898405064931"
-  },
-  {
-    "codprod": "6065",
-    "descricao": "DOCILE DOCIGOMA MIX SUPER AZE 12 PC 15G",
-    "qt_unid": "5",
-    "preco_unidade": "10.57",
-    "qt_master": "0.4166666666666667",
-    "ean": "7896451926166"
-  },
-  {
-    "codprod": "4245",
-    "descricao": "DOCILE GELATINES MINI AMORAS 15G",
-    "qt_unid": "5",
-    "preco_unidade": "11.32",
-    "qt_master": "0.4166666666666667",
-    "ean": "7896451912947"
-  },
-  {
-    "codprod": "5251",
-    "descricao": "DOCILE MAXMALLOW TUBO BRANCO ASSAR 150G",
-    "qt_unid": "7",
-    "preco_unidade": "6.06",
-    "qt_master": "0.35",
-    "ean": "7896451922687"
-  },
-  {
-    "codprod": "6167",
-    "descricao": "AUDAZ BALA LIQUIDA SPRAY FRESH C/12",
-    "qt_unid": "4",
-    "preco_unidade": "22.86",
-    "qt_master": "0.333333333333333",
-    "ean": "7898656685817"
-  },
-  {
-    "codprod": "4754",
-    "descricao": "B UNIAO CONFEITO MAMA FEST AZUL C/ 12",
-    "qt_unid": "4",
-    "preco_unidade": "1.176",
-    "qt_master": "0.333333333333333",
-    "ean": "7898656683547"
-  },
-  {
-    "codprod": "5879",
-    "descricao": "FAMPAR GALINHA E PATO BOTA CHICLE C/12",
-    "qt_unid": "2",
-    "preco_unidade": "1.176",
-    "qt_master": "0.333333333333333",
-    "ean": "7908274800490"
-  },
-  {
-    "codprod": "4758",
-    "descricao": "FAMPAR SKATE RADICAL DISPLAY C/15",
-    "qt_unid": "4",
-    "preco_unidade": "1.176",
-    "qt_master": "0.333333333333333",
-    "ean": "7898405062920"
-  },
-  {
-    "codprod": "5847",
-    "descricao": "GSA REFRESKANT LARANJA DOCINHA 20G C/15",
-    "qt_unid": "3",
-    "preco_unidade": "12.37",
-    "qt_master": "0.3",
-    "ean": "7898933733903"
-  },
-  {
-    "codprod": "2510",
-    "descricao": "DOCILE CHICLE PASTICLE TUTTI FRUTI 240G",
-    "qt_unid": "7",
-    "preco_unidade": "11.63",
-    "qt_master": "0.2916666666666667",
-    "ean": "7896451907103"
-  },
-  {
-    "codprod": "2466",
-    "descricao": "DOCILE BALA GELATINES BEIJO 70GR",
-    "qt_unid": "3",
-    "preco_unidade": "4.57",
-    "qt_master": "0.25",
-    "ean": "7896451909381"
-  },
-  {
-    "codprod": "3813",
-    "descricao": "DOCILE TANDY REFRESCO UVA 25G",
-    "qt_unid": "2",
-    "preco_unidade": "10.72",
-    "qt_master": "0.25",
-    "ean": "7896451904898"
-  },
-  {
-    "codprod": "2572",
-    "descricao": "DOCILE DROPS ROLLY MINT MORANGO 29G C/16",
-    "qt_unid": "5",
-    "preco_unidade": "15.31",
-    "qt_master": "0.20833333333333334",
-    "ean": "7896451907202"
-  },
-  {
-    "codprod": "5864",
-    "descricao": "AUDAZ CONFEITO PIROMANIA C/ 15",
-    "qt_unid": "2",
-    "preco_unidade": "1.176",
-    "qt_master": "0.166666666666667",
-    "ean": "7898656681320"
-  },
-  {
-    "codprod": "5884",
-    "descricao": "AUDAZ PIRULITO STICALITO DP C/20",
-    "qt_unid": "2",
-    "preco_unidade": "1.176",
-    "qt_master": "0.166666666666667",
-    "ean": "7898656685053"
-  },
-  {
-    "codprod": "5181",
-    "descricao": "B UNIAO UNICORNIO APITO C/15",
-    "qt_unid": "2",
-    "preco_unidade": "1.176",
-    "qt_master": "0.166666666666667",
-    "ean": "7898405067673"
-  },
-  {
-    "codprod": "3824",
-    "descricao": "DOCILE BALA CANUDINHO TUTTI F CITRI 70GR",
-    "qt_unid": "2",
-    "preco_unidade": "4.57",
-    "qt_master": "0.16666666666666666",
-    "ean": "7896451912473"
-  },
-  {
-    "codprod": "3830",
-    "descricao": "DOCILE CANUD COLOR MOR CITRIC 12PC 15G",
-    "qt_unid": "2",
-    "preco_unidade": "11.32",
-    "qt_master": "0.16666666666666666",
-    "ean": "7896451913081"
-  },
-  {
-    "codprod": "6070",
-    "descricao": "ITAMARATY LOOK STICK WAFER ATREVIDOS 55G",
-    "qt_unid": "3",
-    "preco_unidade": "2.76",
-    "qt_master": "0.15",
-    "ean": "7891340303615"
-  },
-  {
-    "codprod": "3820",
-    "descricao": "DOCILE TANDY REFRESCO LARANJA 25G",
-    "qt_unid": "1",
-    "preco_unidade": "10.72",
-    "qt_master": "0.125",
-    "ean": "7896457904904"
-  },
-  {
-    "codprod": "3808",
-    "descricao": "DOCILE TANDY REFRESCO MARACUJA 25G",
-    "qt_unid": "1",
-    "preco_unidade": "10.72",
-    "qt_master": "0.125",
-    "ean": "7896451904881"
-  },
-  {
-    "codprod": "3809",
-    "descricao": "DOCILE TANDY REFRESCO MORANGO 25G",
-    "qt_unid": "1",
-    "preco_unidade": "10.72",
-    "qt_master": "0.125",
-    "ean": "7896451904874"
-  },
-  {
-    "codprod": "3812",
-    "descricao": "DOCILE TANDY REFRESCO TANGERINA 25G",
-    "qt_unid": "1",
-    "preco_unidade": "10.72",
-    "qt_master": "0.125",
-    "ean": "7896451904867"
-  },
-  {
-    "codprod": "6068",
-    "descricao": "DOCILE BALA CANUDINHO JUMBO BITE 70GR",
-    "qt_unid": "1",
-    "preco_unidade": "4.57",
-    "qt_master": "0.08333333333333333",
-    "ean": "7896451926203"
-  },
-  {
-    "codprod": "4402",
-    "descricao": "DOCILE BALA GELATINES MIX FRUTAS NAT 70G",
-    "qt_unid": "1",
-    "preco_unidade": "4.57",
-    "qt_master": "0.08333333333333333",
-    "ean": "7896451914620"
-  },
-  {
-    "codprod": "3838",
-    "descricao": "DOCILE CANUD COL MOR CITR UNI 12 PC 15G",
-    "qt_unid": "1",
-    "preco_unidade": "11.32",
-    "qt_master": "0.08333333333333333",
-    "ean": "7896451913593"
-  },
-  {
-    "codprod": "4234",
-    "descricao": "DOCILE DOCIGOMA MINI SINO SORT 18G",
-    "qt_unid": "1",
-    "preco_unidade": "18.02",
-    "qt_master": "0.08333333333333333",
-    "ean": "7896451918604"
-  },
-  {
-    "codprod": "3906",
-    "descricao": "GSA SANDELLA SOPAO CALABRESA PI 90G",
-    "qt_unid": "1",
-    "preco_unidade": "3.69",
-    "qt_master": "0.08333333333333333",
-    "ean": "7896225700596"
-  },
-  {
-    "codprod": "5148",
-    "descricao": "DOCILE MAXMAL RECH TWI COL BAU/MORA 135G",
-    "qt_unid": "1",
-    "preco_unidade": "6.06",
-    "qt_master": "0.05",
-    "ean": "7896451922212"
-  },
-  {
-    "codprod": "2798",
-    "descricao": "GSA SANDELLA TEMPERO EM PO CARNE 50G",
-    "qt_unid": "2",
-    "preco_unidade": "2.59",
-    "qt_master": "0.041666666666666664",
-    "ean": "7896071018104"
-  },
-  {
-    "codprod": "2797",
-    "descricao": "GSA SANDELLA TEMPERO EM PO AVES 50G",
-    "qt_unid": "1",
-    "preco_unidade": "2.59",
-    "qt_master": "0.020833333333333332",
-    "ean": "7896071018043"
-  }
-];
+          {
+            "codprod": "6161",
+            "descricao": "RANDON VINHO TINTO SUAV BORDO 1500ML PET",
+            "qt_unid": "306",
+            "preco_unidade": "15.72",
+            "qt_master": "51",
+            "ean": "7896741693082"
+          },
+          {
+            "codprod": "6203",
+            "descricao": "RANDON STEMPEL BLACK VD 600ML",
+            "qt_unid": "240",
+            "preco_unidade": "9.01",
+            "qt_master": "40",
+            "ean": "7896741693822"
+          }
+        ];
 
         // --- Variáveis Globais ---
         const productList = document.getElementById('product-list');
@@ -1687,7 +143,10 @@
         const filterContainer = document.getElementById('filter-buttons');
         const prevButton = document.getElementById('prev-btn');
         const nextButton = document.getElementById('next-btn');
+        const searchInput = document.getElementById('search-input');
+        const suggestionsContainer = document.getElementById('suggestions-container');
         let validProducts = []; // Array para produtos limpos e válidos
+        let currentFilteredProducts = []; // Para saber a lista atual de produtos visíveis
 
         /**
          * Extrai o nome do fornecedor da descrição
@@ -1705,6 +164,65 @@
         }
 
         /**
+         * Exibe as sugestões de busca
+         */
+        function displaySuggestions(suggestions) {
+            suggestionsContainer.innerHTML = '';
+            if (suggestions.length === 0) {
+                suggestionsContainer.style.display = 'none';
+                return;
+            }
+
+            suggestions.forEach(product => {
+                const suggestionItem = document.createElement('div');
+                suggestionItem.className = 'p-2 hover:bg-gray-100 cursor-pointer';
+                suggestionItem.textContent = `${product.codprod} - ${product.descricao}`;
+
+                suggestionItem.onclick = () => {
+                    const card = document.querySelector(`.product-card[data-codprod='${product.codprod}']`);
+                    if (card) {
+                        card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+                        card.style.transition = 'all 0.2s ease-in-out';
+                        card.style.transform = 'scale(1.03)';
+                        card.style.boxShadow = '0 0 15px rgba(59, 130, 246, 0.5)';
+                        setTimeout(() => {
+                            card.style.transform = 'scale(1)';
+                            card.style.boxShadow = '';
+                        }, 1200);
+                    }
+                    searchInput.value = '';
+                    suggestionsContainer.innerHTML = '';
+                    suggestionsContainer.style.display = 'none';
+                };
+                suggestionsContainer.appendChild(suggestionItem);
+            });
+
+            suggestionsContainer.style.display = 'block';
+        }
+
+        /**
+         * Lida com a entrada de texto no campo de busca
+         */
+        function handleSearchInput(event) {
+            const searchTerm = event.target.value.toLowerCase();
+
+            if (searchTerm.length < 2) {
+                suggestionsContainer.style.display = 'none';
+                renderProducts(currentFilteredProducts); // Restaura a lista filtrada atual
+                return;
+            }
+
+            const searchResults = currentFilteredProducts.filter(p =>
+                p.descricao.toLowerCase().includes(searchTerm) ||
+                p.codprod.toLowerCase().includes(searchTerm)
+            );
+
+            renderProducts(searchResults);
+            displaySuggestions(searchResults);
+        }
+
+        /**
          * Renderiza os cards dos produtos no carrossel
          */
         function renderProducts(productsToRender) {
@@ -1712,7 +230,7 @@
             productCount.innerText = productsToRender.length + ' produtos encontrados';
 
             if (productsToRender.length === 0) {
-                productList.innerHTML = '<p class=\'text-gray-500 p-4 w-full text-center\'>Nenhum produto encontrado.</p>';
+                productList.innerHTML = '<p class=\\'text-gray-500 p-4 w-full text-center\\'>Nenhum produto encontrado.</p>';
                 checkScrollButtons();
                 return;
             }
@@ -1726,39 +244,37 @@
                 const card = document.createElement('div');
                 card.className = 'product-card relative bg-white shadow-xl rounded-xl p-4 sm:p-6 w-[90%] sm:w-[85%] md:w-[80%] lg:w-[70%] xl:w-[60%] transition-all duration-300 hover:shadow-2xl';
                 card.dataset.supplier = supplierName;
+                card.dataset.codprod = product.codprod; // Adicionado para a busca
 
                 const badge = document.createElement('span');
                 badge.className = 'absolute top-4 right-4 bg-indigo-100 text-indigo-800 text-xs font-semibold px-2.5 py-0.5 rounded-full';
                 badge.innerText = supplierName;
                 
                 const infoDiv = document.createElement('div');
-                // Classe ajustada para layout flex-grow
                 infoDiv.className = 'flex flex-col h-full min-h-[420px]';
                 
-                // Dividido header e descrição
                 const headerDiv = document.createElement('div');
-                // Usamos concatenação (+) para construir o HTML de forma segura dentro do template literal
                 headerDiv.innerHTML = 
-                    '<div class=\'text-xs text-gray-400 mb-2\'>Cód: ' + product.codprod + ' | EAN: ' + (product.ean || 'N/A') + '</div>';
+                    '<div class=\\'text-xs text-gray-400 mb-2\\'>Cód: ' + product.codprod + ' | EAN: ' + (product.ean || 'N/A') + '</div>';
 
                 const desc = document.createElement('h3');
-                desc.className = 'text-lg sm:text-xl font-bold text-gray-900 mb-4 flex-grow'; // flex-grow adicionado
+                desc.className = 'text-lg sm:text-xl font-bold text-gray-900 mb-4 flex-grow';
                 desc.innerText = product.descricao;
 
                 const statsDiv = document.createElement('div');
                 statsDiv.className = 'grid grid-cols-3 gap-1 sm:gap-2 text-center mb-6 border-y border-gray-100 py-4';
                 statsDiv.innerHTML = 
                     '<div>' +
-                        '<span class=\'block text-sm text-gray-500\'>Estoque</span>' +
-                        '<span class=\'block font-bold text-2xl sm:text-4xl md:text-5xl text-red-600\'>' + pUnid.toFixed(0) + '</span>' +
+                        '<span class=\\'block text-sm text-gray-500\\'>Estoque</span>' +
+                        '<span class=\\'block font-bold text-2xl sm:text-4xl md:text-5xl text-red-600\\'>' + pUnid.toFixed(0) + '</span>' +
                     '</div>' +
                     '<div>' +
-                        '<span class=\'block text-sm text-gray-500\'>Preço (UN)</span>' +
-                        '<span class=\'block font-bold text-2xl sm:text-4xl md:text-5xl text-green-600\'>R$' + product.preco_unidade + '</span>' +
+                        '<span class=\\'block text-sm text-gray-500\\'>Preço (UN)</span>' +
+                        '<span class=\\'block font-bold text-2xl sm:text-4xl md:text-5xl text-green-600\\'>R$' + product.preco_unidade + '</span>' +
                     '</div>' +
                     '<div>' +
-                        '<span class=\'block text-sm text-gray-500\'>UN / Caixa</span>' +
-                        '<span class=\'block font-bold text-2xl sm:text-4xl md:text-5xl text-blue-600\'>' + Math.round(unidPorCaixa) + '</span>' +
+                        '<span class=\\'block text-sm text-gray-500\\'>UN / Caixa</span>' +
+                        '<span class=\\'block font-bold text-2xl sm:text-4xl md:text-5xl text-blue-600\\'>' + Math.round(unidPorCaixa) + '</span>' +
                     '</div>';
 
                 const searchLink = document.createElement('a');
@@ -1766,11 +282,9 @@
                 searchLink.href = 'https://www.google.com/search?tbm=isch&q=' + searchQuery;
                 searchLink.target = '_blank';
                 searchLink.rel = 'noopener noreferrer';
-                // mt-auto adicionado
                 searchLink.className = 'w-full mt-auto inline-block text-center px-6 py-3 bg-blue-600 text-white text-sm sm:text-base font-medium rounded-lg hover:bg-blue-700 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 uppercase';
                 searchLink.innerText = 'PESQUISAR IMAGEM';
 
-                // Ordem de montagem ajustada
                 infoDiv.appendChild(headerDiv);
                 infoDiv.appendChild(desc);
                 infoDiv.appendChild(statsDiv);
@@ -1793,11 +307,15 @@
             
             productList.scrollTo({ left: 0, behavior: 'auto' });
             
-            const productsToRender = (supplier === 'Todos')
+            // Limpa a busca ao trocar de filtro
+            searchInput.value = '';
+            suggestionsContainer.style.display = 'none';
+
+            currentFilteredProducts = (supplier === 'Todos')
                 ? validProducts
                 : validProducts.filter(p => getSupplier(p.descricao) === supplier);
             
-            renderProducts(productsToRender);
+            renderProducts(currentFilteredProducts);
         }
 
         /**
@@ -1805,7 +323,7 @@
          */
         function createFilterButtons() {
             const suppliers = ['Todos', ...new Set(validProducts.map(p => getSupplier(p.descricao)))];
-            suppliers.sort(); // Ordena alfabeticamente
+            suppliers.sort();
 
             suppliers.forEach(supplier => {
                 const button = document.createElement('button');
@@ -1826,10 +344,10 @@
          */
         function checkScrollButtons() {
             setTimeout(() => {
-                if (!productList) return; // Garante que o elemento existe
+                if (!productList) return;
                 const maxScroll = productList.scrollWidth - productList.clientWidth;
                 prevButton.disabled = productList.scrollLeft <= 0;
-                nextButton.disabled = productList.scrollLeft >= maxScroll - 2; // -2 de margem
+                nextButton.disabled = productList.scrollLeft >= maxScroll - 2;
             }, 100);
         }
 
@@ -1837,39 +355,29 @@
          * Função principal executada quando a página carrega
          */
         window.onload = function() {
-            // 1. Filtra produtos inválidos
             validProducts = products.filter(p => 
                 p && typeof p === 'object' && p.codprod && p.descricao && 
                 !Object.keys(p).some(key => key.includes('"') || key.includes(':'))
             );
             
-            // 2. Ordena os produtos válidos (ESTOQUE PRIMEIRO)
             validProducts.sort((a, b) => {
                 const estoqueA = parseFloat(a.qt_unid?.replace(',', '.')) || 0;
                 const estoqueB = parseFloat(b.qt_unid?.replace(',', '.')) || 0;
-
-                // Nível 1: Estoque (do maior para o menor)
-                if (estoqueA !== estoqueB) {
-                    return estoqueB - estoqueA;
-                }
-
-                // Nível 2: Descrição (A-Z)
+                if (estoqueA !== estoqueB) return estoqueB - estoqueA;
                 const descA = a.descricao.toUpperCase();
                 const descB = b.descricao.toUpperCase();
                 if (descA < descB) return -1;
                 if (descA > descB) return 1;
-                
-                // Nível 3: Fornecedor (A-Z)
                 const supplierA = getSupplier(a.descricao);
                 const supplierB = getSupplier(b.descricao);
                 if (supplierA < supplierB) return -1;
                 if (supplierA > supplierB) return 1;
-
                 return 0;
             });
 
+            currentFilteredProducts = [...validProducts]; // Inicia com todos os produtos
             createFilterButtons();
-            renderProducts(validProducts);
+            renderProducts(currentFilteredProducts);
 
             nextButton.onclick = () => {
                 const scrollAmount = productList.clientWidth * 0.8;
@@ -1879,6 +387,14 @@
                 const scrollAmount = productList.clientWidth * 0.8;
                 productList.scrollBy({ left: -scrollAmount, behavior: 'smooth' });
             };
+
+            searchInput.addEventListener('input', handleSearchInput);
+
+            document.addEventListener('click', function(event) {
+                if (!searchInput.contains(event.target) && !suggestionsContainer.contains(event.target)) {
+                    suggestionsContainer.style.display = 'none';
+                }
+            });
 
             productList.addEventListener('scroll', checkScrollButtons);
             window.addEventListener('resize', checkScrollButtons);
